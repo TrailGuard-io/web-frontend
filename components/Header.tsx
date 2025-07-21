@@ -1,9 +1,11 @@
 import { useRouter } from "next/router";
+import { useTranslation } from "next-i18next";
 import { useUserStore } from "../store/user";
 
 export default function Header() {
   const router = useRouter();
   const { locale, push, pathname, query } = router;
+  const { t } = useTranslation("common");
   const nextLocale = locale === "es" ? "en" : "es";
 
   const switchLanguage = () => {
