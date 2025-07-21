@@ -34,7 +34,7 @@ export default function Home() {
       <main className="flex flex-col items-center justify-center min-h-screen bg-gray-950 text-white px-4">
         <div className="text-center mb-8">
           <Image
-            src="/logo.png"
+            src="/images/logo.png"
             alt="TrailGuard Logo"
             width={256}
             height={256}
