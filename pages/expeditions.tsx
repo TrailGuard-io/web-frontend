@@ -53,18 +53,25 @@ export default function ExpeditionsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'planned' | 'active'>('all');
   const token = useUserStore((state) => state.token);
+  const setToken = useUserStore((state) => state.setToken);
   const router = useRouter();
 
   useEffect(() => {
-    if (!token) {
+    let storedToken = token;
+    if (!storedToken) {
       const stored = localStorage.getItem("token");
-      if (!stored) return router.push("/login");
+      if (!stored) {
+        router.push("/login");
+        return;
+      }
+      storedToken = stored;
+      setToken(stored);
     }
 
     const params = filter !== 'all' ? `?status=${filter}` : '';
     
     fetch(`http://localhost:3001/api/expeditions${params}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${storedToken}` },
     })
       .then((res) => res.json())
       .then((data) => {
@@ -75,7 +82,7 @@ export default function ExpeditionsPage() {
         alert("Error al cargar expediciones");
         setIsLoading(false);
       });
-  }, [token, filter]);
+  }, [token, filter, router, setToken]);
 
   const handleJoinExpedition = async (expeditionId: number) => {
     try {

@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import LoginPage from "./login";
+import LoginPage from "../../pages/login";
 
 vi.mock("next/router", () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -10,7 +10,7 @@ vi.mock("next-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-vi.mock("../store/user", () => {
+vi.mock("../../store/user", () => {
   const store = { setToken: vi.fn(), token: null };
   return {
     useUserStore: (selector: any) => selector(store),

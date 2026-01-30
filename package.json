@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "next dev -H localhost --webpack",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -24,6 +24,7 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^6.4.2",
     "@testing-library/react": "^14.2.1",
+    "@types/leaflet": "^1.9.21",
     "@types/node": "^20.4.2",
     "@types/react": "^18.2.6",
     "@vitejs/plugin-react": "^4.3.1",

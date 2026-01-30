@@ -35,7 +35,10 @@ export default function TeamsPage() {
   useEffect(() => {
     if (!token) {
       const stored = localStorage.getItem("token");
-      if (!stored) return router.push("/login");
+      if (!stored) {
+        router.push("/login");
+        return;
+      }
     }
 
     fetch("http://localhost:3001/api/teams", {

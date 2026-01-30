@@ -30,7 +30,10 @@ export default function SubscriptionPage() {
   useEffect(() => {
     if (!token) {
       const stored = localStorage.getItem("token");
-      if (!stored) return router.push("/login");
+      if (!stored) {
+        router.push("/login");
+        return;
+      }
     }
 
     Promise.all([

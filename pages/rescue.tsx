@@ -83,7 +83,10 @@ export default function RescuesPage() {
 
   useEffect(() => {
     const storedToken = token || localStorage.getItem("token");
-    if (!storedToken) return router.push("/login");
+    if (!storedToken) {
+      router.push("/login");
+      return;
+    }
     if (!token) setToken(storedToken);
 
     if (!mapBounds) return;

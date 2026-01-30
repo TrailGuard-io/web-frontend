@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import Home from "./index";
+import Home from "../../pages/index";
 
 vi.mock("next/router", () => ({
   useRouter: () => ({ push: vi.fn() }),
