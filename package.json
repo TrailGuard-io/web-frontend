@@ -2,14 +2,16 @@
   "name": "trailguard-web",
   "version": "1.0.0",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -H localhost --webpack",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "i18next": "^23.16.8",
     "leaflet": "^1.9.4",
-    "next": "14.1.0",
+    "next": "^16.1.6",
     "next-i18next": "^14.0.3",
     "react": "18.2.0",
     "react-dom": "18.2.0",
@@ -20,10 +22,15 @@
     "zustand": "^4.5.7"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.4.2",
+    "@testing-library/react": "^14.2.1",
     "@types/node": "^20.4.2",
     "@types/react": "^18.2.6",
+    "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.14",
+    "jsdom": "^24.0.0",
     "postcss": "^8.4.21",
-    "tailwindcss": "^3.3.0"
+    "tailwindcss": "^3.3.0",
+    "vitest": "^4.0.18"
   }
 }

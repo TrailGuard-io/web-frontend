@@ -4,6 +4,14 @@ import { useUserStore } from "../store/user";
 import dynamic from "next/dynamic";
 import { useTranslation } from "next-i18next";
 import { serverSideTranslations } from "next-i18next/serverSideTranslations";
+import {
+  ASSISTANCE_CHANNEL_OPTIONS,
+  ASSISTANCE_STATUS_OPTIONS,
+  DRIVETRAIN_OPTIONS,
+  PROBLEM_OPTIONS,
+  TERRAIN_OPTIONS,
+  VEHICLE_OPTIONS,
+} from "../lib/rescueOptions";
 
 const MapContainer = dynamic(
   () => import("react-leaflet").then((mod) => mod.MapContainer),
@@ -27,6 +35,13 @@ interface Rescue {
   longitude: number;
   message: string | null;
   status: string;
+  vehicleType?: string | null;
+  drivetrain?: string | null;
+  terrainType?: string | null;
+  problemType?: string | null;
+  assistanceStatus?: string | null;
+  assistanceChannel?: string | null;
+  assistanceProvider?: string | null;
   createdAt: string;
 }
 
@@ -44,6 +59,13 @@ export default function DashboardPage() {
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
   const [message, setMessage] = useState("");
+  const [vehicleType, setVehicleType] = useState("");
+  const [drivetrain, setDrivetrain] = useState("");
+  const [terrainType, setTerrainType] = useState("");
+  const [problemType, setProblemType] = useState("");
+  const [assistanceStatus, setAssistanceStatus] = useState("");
+  const [assistanceChannel, setAssistanceChannel] = useState("");
+  const [assistanceProvider, setAssistanceProvider] = useState("");
   const [locating, setLocating] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -91,7 +113,7 @@ export default function DashboardPage() {
 
     const fetchRescues = async () => {
       try {
-        const res = await fetch("http://localhost:3001/rescue/my", {
+        const res = await fetch("http://localhost:3001/api/rescue/my", {
           headers: { Authorization: `Bearer ${storedToken}` },
         });
         if (!res.ok) throw new Error("No autorizado");
@@ -124,154 +146,307 @@ export default function DashboardPage() {
     );
   };
 
-  if (loading) return <p className="p-4">{t("loading_rescues")}</p>;
+  if (loading) return <p className="p-4 text-ink-muted">{t("loading_rescues")}</p>;
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">{t("rescue_list")}</h1>
+    <div className="min-h-screen px-4 py-10">
+      <div className="mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="space-y-6">
+          <div className="rounded-[28px] border border-slate-100/80 bg-white/90 p-6 shadow-card backdrop-blur">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-ink-muted">
+                  Panel principal
+                </p>
+                <h1 className="font-display text-2xl font-semibold text-ink">
+                  {t("rescue_list")}
+                </h1>
+              </div>
+              <span className="rounded-full bg-ink px-3 py-1 text-xs font-semibold text-white">
+                {rescues.length} activos
+              </span>
+            </div>
 
-      {rescues.length === 0 ? (
-        <p className="text-gray-500">{t("no_rescues")}</p>
-      ) : (
-        <ul className="space-y-4 mb-6">
-          {rescues.map((rescue) => (
-            <li key={rescue.id} className="p-4 border rounded-xl shadow-sm">
-              <p>
-                <strong>{t("location")}:</strong> {rescue.latitude},{" "}
-                {rescue.longitude}
-              </p>
-              <p>
-                <strong>{t("message")}:</strong> {rescue.message || "—"}
-              </p>
-              <p>
-                <strong>{t("status")}:</strong> {rescue.status}
-              </p>
-              <p className="text-sm text-gray-500">
-                {t("date")}: {new Date(rescue.createdAt).toLocaleString()}
-              </p>
-            </li>
-          ))}
-        </ul>
-      )}
+            {rescues.length === 0 ? (
+              <p className="mt-4 text-ink-muted">{t("no_rescues")}</p>
+            ) : (
+              <ul className="mt-4 space-y-3">
+                {rescues.map((rescue) => (
+                  <li
+                    key={rescue.id}
+                    className="rounded-2xl border border-slate-100/80 bg-white px-4 py-3 shadow-sm"
+                  >
+                    <p className="text-sm text-ink">
+                      <strong>{t("location")}:</strong> {rescue.latitude},{" "}
+                      {rescue.longitude}
+                    </p>
+                    <p className="text-sm text-ink-muted">
+                      <strong>{t("message")}:</strong> {rescue.message || "—"}
+                    </p>
+                    <p className="text-sm text-ink-muted">
+                      <strong>{t("status")}:</strong> {rescue.status}
+                    </p>
+                    <p className="text-xs text-ink-muted">
+                      {t("date")}: {new Date(rescue.createdAt).toLocaleString()}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
-      <hr className="my-6" />
+          <div
+            id="rescue-form"
+            className="rounded-[28px] border border-slate-100/80 bg-white/90 p-6 shadow-card backdrop-blur"
+          >
+            <h2 className="font-display text-xl font-semibold text-ink">
+              {t("request_rescue")}
+            </h2>
+            <p className="mt-2 text-sm text-ink-muted">
+              Enviá tu ubicación para activar la asistencia.
+            </p>
 
-      <h2 className="text-xl font-semibold mb-2">{t("request_rescue")}</h2>
-      <form
-        onSubmit={async (e) => {
-          e.preventDefault();
-          const storedToken = token || localStorage.getItem("token");
-          if (!storedToken) return;
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const storedToken = token || localStorage.getItem("token");
+                if (!storedToken) return;
 
-          try {
-            const res = await fetch("http://localhost:3001/rescue/request", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${storedToken}`,
-              },
-              body: JSON.stringify({
-                latitude: parseFloat(lat),
-                longitude: parseFloat(lng),
-                message,
-              }),
-            });
+                try {
+                  const payload: Record<string, any> = {
+                    latitude: parseFloat(lat),
+                    longitude: parseFloat(lng),
+                  };
 
-            const data = await res.json();
-            if (!res.ok) return alert(data.error || "Error");
+                  if (message) payload.message = message;
+                  if (vehicleType) payload.vehicleType = vehicleType;
+                  if (drivetrain) payload.drivetrain = drivetrain;
+                  if (terrainType) payload.terrainType = terrainType;
+                  if (problemType) payload.problemType = problemType;
+                  if (assistanceStatus) payload.assistanceStatus = assistanceStatus;
+                  if (assistanceChannel) payload.assistanceChannel = assistanceChannel;
+                  if (assistanceProvider) payload.assistanceProvider = assistanceProvider;
 
-            setRescues((prev) => [data, ...prev]);
-            setLat("");
-            setLng("");
+                  const res = await fetch("http://localhost:3001/api/rescue/request", {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${storedToken}`,
+                    },
+                    body: JSON.stringify(payload),
+                  });
+
+                  const data = await res.json();
+                  if (!res.ok) return alert(data.error || "Error");
+
+                  setRescues((prev) => [data, ...prev]);
+                  setLat("");
+                  setLng("");
             setMessage("");
+            setVehicleType("");
+            setDrivetrain("");
+            setTerrainType("");
+            setProblemType("");
+            setAssistanceStatus("");
+            setAssistanceChannel("");
+            setAssistanceProvider("");
           } catch {
             alert("Error al conectar");
           }
         }}
-        className="space-y-3"
+        className="mt-5 space-y-4"
       >
-        <div className="space-y-2">
-          <div className="flex gap-2">
-            <input
-              type="number"
-              step="any"
-              required
-              placeholder="Latitud"
-              value={lat}
-              onChange={(e) => setLat(e.target.value)}
-              className="w-full p-2 border rounded"
-            />
-            <input
-              type="number"
-              step="any"
-              required
-              placeholder="Longitud"
-              value={lng}
-              onChange={(e) => setLng(e.target.value)}
-              className="w-full p-2 border rounded"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={obtenerUbicacion}
-            disabled={locating}
-            className="text-sm text-blue-600 underline"
-          >
-            {locating ? "Obteniendo ubicación…" : t("use_location")}
-          </button>
-        </div>
-
-        <textarea
-          name="message"
-          placeholder={t("optional_message")}
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          className="w-full p-2 border rounded"
-        ></textarea>
-
-        <button
-          type="submit"
-          className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700"
-        >
-          {t("send_request")}
-        </button>
-      </form>
-
-      {(rescues.length > 0 || userLocation) && rescueIcon && (
-        <div className="mt-6 h-80 rounded-xl overflow-hidden shadow">
-          <MapContainer
-            center={
-              userLocation || [
-                rescues[0]?.latitude ?? 0,
-                rescues[0]?.longitude ?? 0,
-              ]
-            }
-            zoom={13}
-            scrollWheelZoom={false}
-            className="h-full w-full z-0"
-          >
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            {rescues.map((rescue) => (
-              <Marker
-                key={rescue.id}
-                position={[rescue.latitude, rescue.longitude]}
-                icon={rescueIcon}
+        <div className="grid gap-3 sm:grid-cols-2">
+                <input
+                  type="number"
+                  step="any"
+                  required
+                  placeholder="Latitud"
+                  value={lat}
+                  onChange={(e) => setLat(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none"
+                />
+                <input
+                  type="number"
+                  step="any"
+                  required
+                  placeholder="Longitud"
+                  value={lng}
+                  onChange={(e) => setLng(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={obtenerUbicacion}
+                disabled={locating}
+                className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-ink shadow-pill transition hover:-translate-y-0.5"
               >
-                <Popup>
-                  {rescue.message || "—"}
-                  <br />
-                  {t("status")}: {rescue.status}
-                </Popup>
-              </Marker>
-            ))}
-            {userLocation && userIcon && (
-              <Marker position={userLocation} icon={userIcon}>
-                <Popup>{t("you_are_here")}</Popup>
-              </Marker>
-            )}
-          </MapContainer>
+                {locating ? "Obteniendo ubicación…" : t("use_location")}
+              </button>
+
+              <textarea
+                name="message"
+                placeholder={t("optional_message")}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none"
+                rows={3}
+              ></textarea>
+
+              <div className="rounded-2xl border border-slate-100/80 bg-white/80 p-4">
+                <p className="text-xs uppercase tracking-[0.3em] text-ink-muted">
+                  {t("incident_details")}
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <select
+                    value={vehicleType}
+                    onChange={(e) => setVehicleType(e.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none"
+                  >
+                    <option value="">{t("vehicle_type")}</option>
+                    {VEHICLE_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {t(`vehicle_${option}`)}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={drivetrain}
+                    onChange={(e) => setDrivetrain(e.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none"
+                  >
+                    <option value="">{t("drivetrain")}</option>
+                    {DRIVETRAIN_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {t(`drivetrain_${option}`)}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={terrainType}
+                    onChange={(e) => setTerrainType(e.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none"
+                  >
+                    <option value="">{t("terrain_type")}</option>
+                    {TERRAIN_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {t(`terrain_${option}`)}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={problemType}
+                    onChange={(e) => setProblemType(e.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none"
+                  >
+                    <option value="">{t("problem_type")}</option>
+                    {PROBLEM_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {t(`problem_${option}`)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-100/80 bg-white/80 p-4">
+                <p className="text-xs uppercase tracking-[0.3em] text-ink-muted">
+                  {t("helper_status")}
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <select
+                    value={assistanceStatus}
+                    onChange={(e) => setAssistanceStatus(e.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none"
+                  >
+                    <option value="">{t("assistance_status")}</option>
+                    {ASSISTANCE_STATUS_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {t(`assistance_status_${option}`)}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={assistanceChannel}
+                    onChange={(e) => setAssistanceChannel(e.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none"
+                  >
+                    <option value="">{t("assistance_channel")}</option>
+                    {ASSISTANCE_CHANNEL_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {t(`assistance_channel_${option}`)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <input
+                  value={assistanceProvider}
+                  onChange={(e) => setAssistanceProvider(e.target.value)}
+                  placeholder={t("assistance_provider")}
+                  className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full rounded-full bg-ink py-3 text-sm font-semibold text-white shadow-pill transition hover:-translate-y-0.5"
+              >
+                {t("send_request")}
+              </button>
+            </form>
+          </div>
         </div>
-      )}
+
+        <div className="lg:sticky lg:top-24">
+          {(rescues.length > 0 || userLocation) && rescueIcon && (
+            <div className="rounded-[28px] border border-slate-100/80 bg-white/90 p-4 shadow-card backdrop-blur">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-ink">Mapa en vivo</h3>
+                <span className="text-xs text-ink-muted">Actualizado</span>
+              </div>
+              <div className="h-80 overflow-hidden rounded-2xl">
+                <MapContainer
+                  center={
+                    userLocation || [
+                      rescues[0]?.latitude ?? 0,
+                      rescues[0]?.longitude ?? 0,
+                    ]
+                  }
+                  zoom={13}
+                  scrollWheelZoom={false}
+                  className="h-full w-full z-0"
+                >
+                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  {rescues.map((rescue) => (
+                    <Marker
+                      key={rescue.id}
+                      position={[rescue.latitude, rescue.longitude]}
+                      icon={rescueIcon}
+                    >
+                      <Popup>
+                        {rescue.message || "—"}
+                        <br />
+                        {t("status")}: {rescue.status}
+                      </Popup>
+                    </Marker>
+                  ))}
+                  {userLocation && userIcon && (
+                    <Marker position={userLocation} icon={userIcon}>
+                      <Popup>{t("you_are_here")}</Popup>
+                    </Marker>
+                  )}
+                </MapContainer>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

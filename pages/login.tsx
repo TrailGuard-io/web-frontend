@@ -21,7 +21,7 @@ export default function LoginPage() {
     }
 
     try {
-      const res = await fetch("http://localhost:3001/auth/login", {
+      const res = await fetch("http://localhost:3001/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -44,18 +44,40 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-gray-100">
+    <div className="relative flex min-h-screen items-center justify-center px-4 py-16">
       <ToastContainer />
-      <div className="bg-white p-8 rounded shadow-md w-full max-w-sm">
-        <h1 className="text-2xl font-bold mb-6 text-center">{t("login")}</h1>
-        <form onSubmit={login} className="space-y-4">
+      <div className="absolute -top-10 left-10 h-40 w-40 rounded-full bg-red-100 blur-3xl" />
+      <div className="absolute bottom-0 right-0 h-48 w-48 rounded-full bg-sky-100 blur-3xl" />
+
+      <div className="relative w-full max-w-md rounded-[32px] bg-white/90 p-8 shadow-card backdrop-blur">
+        <div className="flex items-center gap-3">
+          <img
+            src="/images/logo2.png"
+            alt="TrailGuard"
+            className="h-12 w-12 rounded-2xl object-cover"
+          />
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.2em] text-red-500">
+              Sistema oficial
+            </p>
+            <h1 className="font-display text-2xl font-semibold text-ink">
+              {t("login")}
+            </h1>
+          </div>
+        </div>
+
+        <p className="mt-3 text-sm text-ink-muted">
+          Accedé a tus expediciones y rescates en tiempo real.
+        </p>
+
+        <form onSubmit={login} className="mt-6 space-y-4">
           <input
             type="email"
             required
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full p-2 border rounded"
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-ink placeholder:text-slate-400 focus:border-ink focus:outline-none"
           />
           <input
             type="password"
@@ -63,11 +85,11 @@ export default function LoginPage() {
             placeholder="Contraseña"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-2 border rounded"
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-ink placeholder:text-slate-400 focus:border-ink focus:outline-none"
           />
           <button
             type="submit"
-            className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded"
+            className="w-full rounded-2xl bg-ink py-3 text-sm font-semibold text-white shadow-pill transition hover:-translate-y-0.5"
           >
             {t("login")}
           </button>

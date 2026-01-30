@@ -10,3 +10,44 @@ body,
 #__next {
     height: 100%;
 }
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+:root {
+    color-scheme: light;
+    --app-bg: #f3f6fb;
+    --app-ink: #0f1b2d;
+    --app-ink-muted: #4b5563;
+}
+
+body {
+    margin: 0;
+    font-family: "Plus Jakarta Sans", sans-serif;
+    color: var(--app-ink);
+    background:
+        radial-gradient(circle at 10% 20%, #e8f1ff 0%, rgba(232, 241, 255, 0) 45%),
+        radial-gradient(circle at 85% 10%, #fdecec 0%, rgba(253, 236, 236, 0) 38%),
+        radial-gradient(circle at 80% 80%, #dff1f8 0%, rgba(223, 241, 248, 0) 42%),
+        linear-gradient(180deg, #f7f9fd 0%, #eef2f7 100%);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: "Sora", sans-serif;
+    color: var(--app-ink);
+}
+
+input,
+textarea,
+button,
+select {
+    font-family: inherit;
+}
