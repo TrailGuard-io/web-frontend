@@ -3,6 +3,7 @@ import { useUserStore } from "../store/user";
 import { useRouter } from "next/router";
 import { serverSideTranslations } from "next-i18next/serverSideTranslations";
 import { useTranslation } from "next-i18next";
+import { API_BASE_URL } from "../lib/api";
 
 interface SubscriptionPlan {
   name: string;
@@ -37,8 +38,8 @@ export default function SubscriptionPage() {
     }
 
     Promise.all([
-      fetch("http://localhost:3001/api/subscriptions/plans").then(res => res.json()),
-      fetch("http://localhost:3001/api/subscriptions/current", {
+      fetch(`${API_BASE_URL}/api/subscriptions/plans`).then(res => res.json()),
+      fetch(`${API_BASE_URL}/api/subscriptions/current`, {
         headers: { Authorization: `Bearer ${token}` },
       }).then(res => res.json())
     ])
@@ -66,7 +67,7 @@ export default function SubscriptionPage() {
       // Mock payment ID - in a real app, you'd integrate with Stripe, PayPal, etc.
       const mockPaymentId = `mock_payment_${Date.now()}`;
       
-      const response = await fetch("http://localhost:3001/api/subscriptions", {
+      const response = await fetch(`${API_BASE_URL}/api/subscriptions`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -98,7 +99,7 @@ export default function SubscriptionPage() {
     }
 
     try {
-      const response = await fetch("http://localhost:3001/api/subscriptions/cancel", {
+      const response = await fetch(`${API_BASE_URL}/api/subscriptions/cancel`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });

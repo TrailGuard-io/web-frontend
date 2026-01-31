@@ -3,6 +3,7 @@ import { useUserStore } from "../store/user";
 import { useRouter } from "next/router";
 import { serverSideTranslations } from "next-i18next/serverSideTranslations";
 import { useTranslation } from "next-i18next";
+import { API_BASE_URL } from "../lib/api";
 import Link from "next/link";
 
 interface Expedition {
@@ -52,6 +53,7 @@ export default function ExpeditionsPage() {
   const [expeditions, setExpeditions] = useState<Expedition[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'planned' | 'active'>('all');
+  const [subscriptionPlan, setSubscriptionPlan] = useState("free");
   const token = useUserStore((state) => state.token);
   const setToken = useUserStore((state) => state.setToken);
   const router = useRouter();
@@ -70,7 +72,7 @@ export default function ExpeditionsPage() {
 
     const params = filter !== 'all' ? `?status=${filter}` : '';
     
-    fetch(`http://localhost:3001/api/expeditions${params}`, {
+    fetch(`${API_BASE_URL}/api/expeditions${params}`, {
       headers: { Authorization: `Bearer ${storedToken}` },
     })
       .then((res) => res.json())
@@ -82,11 +84,22 @@ export default function ExpeditionsPage() {
         alert(t("error_loading_expeditions"));
         setIsLoading(false);
       });
+
+    fetch(`${API_BASE_URL}/api/subscriptions/current`, {
+      headers: { Authorization: `Bearer ${storedToken}` },
+    })
+      .then((res) => res.json())
+      .then((data) => setSubscriptionPlan(data.currentPlan || "free"))
+      .catch(() => undefined);
   }, [token, filter, router, setToken]);
 
   const handleJoinExpedition = async (expeditionId: number) => {
+    if (subscriptionPlan === "free") {
+      alert(t("premium_required"));
+      return;
+    }
     try {
-      const response = await fetch(`http://localhost:3001/api/expeditions/${expeditionId}/join`, {
+      const response = await fetch(`${API_BASE_URL}/api/expeditions/${expeditionId}/join`, {
         method: "POST",
         headers: { 
           Authorization: `Bearer ${token}`,
@@ -99,7 +112,11 @@ export default function ExpeditionsPage() {
         window.location.reload();
       } else {
         const error = await response.json();
-        alert(error.error || t("error_join_expedition"));
+        if (response.status === 403) {
+          alert(t("premium_required"));
+        } else {
+          alert(error.error || t("error_join_expedition"));
+        }
       }
     } catch (error) {
       alert(t("connection_error"));
@@ -132,15 +149,23 @@ export default function ExpeditionsPage() {
             <h1 className="font-display text-3xl font-semibold text-ink">
               {t("expeditions")}
             </h1>
-          </div>
-          <Link href="/expeditions/create">
-            <button className="flex items-center gap-2 rounded-full bg-ink px-6 py-3 text-sm font-semibold text-white shadow-pill transition hover:-translate-y-0.5">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              {t("create_expedition")}
-            </button>
-          </Link>
+        </div>
+          <button
+            onClick={() => {
+              if (subscriptionPlan === "free") {
+                alert(t("premium_required"));
+                router.push("/subscription");
+                return;
+              }
+              router.push("/expeditions/create");
+            }}
+            className="flex items-center gap-2 rounded-full bg-ink px-6 py-3 text-sm font-semibold text-white shadow-pill transition hover:-translate-y-0.5"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            {t("create_expedition")}
+          </button>
         </div>
 
         {/* Filter Buttons */}

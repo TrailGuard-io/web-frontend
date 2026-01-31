@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { useUserStore } from "../store/user";
 import dynamic from "next/dynamic";
 import { useTranslation } from "next-i18next";
+import { API_BASE_URL } from "../lib/api";
 import { serverSideTranslations } from "next-i18next/serverSideTranslations";
 import {
   ASSISTANCE_CHANNEL_OPTIONS,
@@ -113,7 +114,7 @@ export default function DashboardPage() {
 
     const fetchRescues = async () => {
       try {
-        const res = await fetch("http://localhost:3001/api/rescue/my", {
+        const res = await fetch(`${API_BASE_URL}/api/rescue/my`, {
           headers: { Authorization: `Bearer ${storedToken}` },
         });
         if (!res.ok) throw new Error("No autorizado");
@@ -230,7 +231,7 @@ export default function DashboardPage() {
                   if (assistanceChannel) payload.assistanceChannel = assistanceChannel;
                   if (assistanceProvider) payload.assistanceProvider = assistanceProvider;
 
-                  const res = await fetch("http://localhost:3001/api/rescue/request", {
+                  const res = await fetch(`${API_BASE_URL}/api/rescue/request`, {
                     method: "POST",
                     headers: {
                       "Content-Type": "application/json",

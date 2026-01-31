@@ -26,6 +26,7 @@ export default function Header() {
     { href: "/expeditions", label: t("expeditions") },
     { href: "/teams", label: t("teams") },
     { href: "/subscription", label: t("subscription") },
+    { href: "/settings", label: t("settings") },
   ];
 
   return (

@@ -45,6 +45,8 @@ Before running this project, make sure you have the following installed:
 
 4. **Ensure the backend is running**:
    Make sure the TrailGuard backend is running on the port specified in your `NEXT_PUBLIC_API_URL` (default: `http://localhost:3001`).
+   For Vercel production, set `NEXT_PUBLIC_API_URL` in the Vercel project environment variables
+   (for example: `https://trailguardapi-q2zbx7653-gapbriels-projects.vercel.app`).
 
 ## Running the Application
 

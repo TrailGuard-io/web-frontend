@@ -4,6 +4,7 @@ import { useUserStore } from "../store/user";
 import { useRouter } from "next/router";
 import { serverSideTranslations } from "next-i18next/serverSideTranslations";
 import { useTranslation } from "next-i18next";
+import { API_BASE_URL } from "../lib/api";
 import {
   ASSISTANCE_CHANNEL_OPTIONS,
   ASSISTANCE_STATUS_OPTIONS,
@@ -28,6 +29,13 @@ const Marker = dynamic(
 const Popup = dynamic(() => import("react-leaflet").then((mod) => mod.Popup), {
   ssr: false,
 });
+const Circle = dynamic(() => import("react-leaflet").then((mod) => mod.Circle), {
+  ssr: false,
+});
+const ZoomControl = dynamic(
+  () => import("react-leaflet").then((mod) => mod.ZoomControl),
+  { ssr: false }
+);
 const MapEvents = dynamic(() => import("../components/MapEvents"), { ssr: false });
 
 export default function RescuesPage() {
@@ -45,6 +53,14 @@ export default function RescuesPage() {
   const [mapCenter, setMapCenter] = useState<[number, number]>([-34.6, -58.4]);
   const [mapKey, setMapKey] = useState(0);
   const [mapZoom, setMapZoom] = useState(5);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<
+    Array<{ display_name: string; lat: string; lon: string }>
+  >([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [hotZoneActive, setHotZoneActive] = useState(false);
   const [mapBounds, setMapBounds] = useState<{
     minLat: number;
     maxLat: number;
@@ -120,8 +136,8 @@ export default function RescuesPage() {
 
     const url =
       params.toString().length > 0
-        ? `http://localhost:3001/api/rescue/all?${params.toString()}`
-        : "http://localhost:3001/api/rescue/all";
+        ? `${API_BASE_URL}/api/rescue/all?${params.toString()}`
+        : `${API_BASE_URL}/api/rescue/all`;
 
     fetch(url, {
       headers: { Authorization: `Bearer ${storedToken}` },
@@ -177,7 +193,7 @@ export default function RescuesPage() {
     params.set("maxLng", mapBounds.maxLng.toString());
     params.set("limit", "500");
 
-    const url = `http://localhost:3001/api/rescue/stream?${params.toString()}`;
+    const url = `${API_BASE_URL}/api/rescue/stream?${params.toString()}`;
 
     const abortController = new AbortController();
     let cancelled = false;
@@ -293,6 +309,47 @@ export default function RescuesPage() {
   const formatRescueStatus = (value?: string | null) =>
     value ? t(`rescue_status_${value}`, { defaultValue: value }) : "";
 
+  const runSearch = async () => {
+    const query = searchQuery.trim();
+    if (!query) {
+      setSearchResults([]);
+      setSearchOpen(false);
+      return;
+    }
+    setSearchLoading(true);
+    setSearchError(null);
+    try {
+      const url = new URL("https://nominatim.openstreetmap.org/search");
+      url.searchParams.set("format", "json");
+      url.searchParams.set("q", query);
+      url.searchParams.set("limit", "5");
+      if (process.env.NEXT_PUBLIC_NOMINATIM_EMAIL) {
+        url.searchParams.set("email", process.env.NEXT_PUBLIC_NOMINATIM_EMAIL);
+      }
+      const response = await fetch(url.toString(), {
+        headers: { "Accept-Language": "es,en" },
+      });
+      if (!response.ok) throw new Error("search_failed");
+      const data = await response.json();
+      setSearchResults(Array.isArray(data) ? data : []);
+      setSearchOpen(true);
+    } catch (err) {
+      setSearchError(t("search_failed"));
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const selectSearchResult = (result: { lat: string; lon: string }) => {
+    const lat = parseFloat(result.lat);
+    const lon = parseFloat(result.lon);
+    if (Number.isNaN(lat) || Number.isNaN(lon)) return;
+    setMapCenter([lat, lon]);
+    setMapZoom(14);
+    setMapKey((prev) => prev + 1);
+    setSearchOpen(false);
+  };
+
   const filteredRescues = useMemo(() => {
     if (filter === "all") return rescues;
     const now = new Date();
@@ -307,6 +364,42 @@ export default function RescuesPage() {
       return diff <= 7 * 24 * 60 * 60 * 1000;
     });
   }, [filter, rescues]);
+
+  const hotZone = useMemo(() => {
+    if (!filteredRescues.length) return null;
+    const buckets = new Map<string, { lat: number; lng: number; count: number }>();
+    filteredRescues.forEach((r: any) => {
+      if (typeof r.latitude !== "number" || typeof r.longitude !== "number") return;
+      const latKey = Math.round(r.latitude * 100) / 100;
+      const lngKey = Math.round(r.longitude * 100) / 100;
+      const key = `${latKey},${lngKey}`;
+      const existing = buckets.get(key);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        buckets.set(key, { lat: latKey, lng: lngKey, count: 1 });
+      }
+    });
+    let top: { lat: number; lng: number; count: number } | null = null;
+    buckets.forEach((value) => {
+      if (!top || value.count > top.count) top = value;
+    });
+    return top;
+  }, [filteredRescues]);
+
+  const handleHotZone = () => {
+    if (!hotZone) {
+      setHotZoneActive(false);
+      return;
+    }
+    const nextActive = !hotZoneActive;
+    setHotZoneActive(nextActive);
+    if (nextActive) {
+      setMapCenter([hotZone.lat, hotZone.lng]);
+      setMapZoom(12);
+      setMapKey((prev) => prev + 1);
+    }
+  };
 
   const recentRescues = useMemo(() => {
     return [...filteredRescues]
@@ -523,10 +616,19 @@ export default function RescuesPage() {
                 key={mapKey}
                 center={mapCenter}
                 zoom={mapZoom}
+                zoomControl={false}
                 className="h-full w-full"
               >
                 <MapEvents onBoundsChange={handleBoundsChange} />
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                <ZoomControl position="bottomright" />
+                {hotZoneActive && hotZone && (
+                  <Circle
+                    center={[hotZone.lat, hotZone.lng]}
+                    radius={2000}
+                    pathOptions={{ color: "#ef4444", fillColor: "#fecaca", fillOpacity: 0.35 }}
+                  />
+                )}
                 {filteredRescues.map((r: any) => (
                   <Marker
                     key={r.id}
@@ -569,7 +671,7 @@ export default function RescuesPage() {
             )}
           </div>
 
-          <div className="pointer-events-none absolute left-0 right-0 top-0 z-[500] flex items-center gap-3 p-4">
+          <div className="pointer-events-none absolute left-0 right-0 top-20 z-[500] flex items-center gap-3 p-4 md:top-24">
             <button
               onClick={() => setPanelOpen(true)}
               className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-ink text-white shadow-pill lg:hidden"
@@ -578,22 +680,73 @@ export default function RescuesPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <div className="pointer-events-auto flex flex-1 items-center gap-2 rounded-2xl bg-white/90 px-4 py-3 shadow-card backdrop-blur">
+            <div className="pointer-events-auto relative flex flex-1 items-center gap-2 rounded-2xl bg-white/90 px-4 py-3 shadow-card backdrop-blur">
               <svg className="h-5 w-5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1010.5 3a7.5 7.5 0 006.15 12.65z" />
               </svg>
               <input
                 className="w-full bg-transparent text-sm text-ink placeholder:text-ink-muted focus:outline-none"
                 placeholder={`${t("search_placeholder")}...`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    runSearch();
+                  }
+                }}
+                onFocus={() => {
+                  if (searchResults.length) setSearchOpen(true);
+                }}
               />
+              <button
+                type="button"
+                onClick={runSearch}
+                className="rounded-full bg-ink px-3 py-1 text-[11px] font-semibold text-white shadow-pill"
+              >
+                {searchLoading ? "..." : t("search")}
+              </button>
+              {(searchLoading || searchOpen || searchError) && (
+                <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-10 rounded-2xl border border-slate-100 bg-white p-2 shadow-card">
+                  {searchLoading && (
+                    <p className="px-3 py-2 text-xs text-ink-muted">{t("search_loading")}</p>
+                  )}
+                  {searchError && (
+                    <p className="px-3 py-2 text-xs text-rose-500">{searchError}</p>
+                  )}
+                  {!searchLoading && !searchError && searchResults.length === 0 && (
+                    <p className="px-3 py-2 text-xs text-ink-muted">{t("search_empty")}</p>
+                  )}
+                  {!searchLoading && !searchError && searchResults.length > 0 && (
+                    <div className="max-h-48 overflow-y-auto">
+                      {searchResults.map((result) => (
+                        <button
+                          key={`${result.lat}-${result.lon}`}
+                          className="flex w-full items-start gap-2 rounded-xl px-3 py-2 text-left text-xs text-ink hover:bg-slate-50"
+                          onClick={() => selectSearchResult(result)}
+                        >
+                          <span className="mt-0.5 inline-flex h-2 w-2 flex-shrink-0 rounded-full bg-red-400" />
+                          <span>{result.display_name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <button
-              className="pointer-events-auto hidden items-center gap-2 rounded-2xl bg-white/90 px-4 py-3 text-sm font-semibold text-ink shadow-card backdrop-blur md:flex"
+              onClick={handleHotZone}
+              disabled={!hotZone}
+              className={`pointer-events-auto hidden items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold shadow-card backdrop-blur md:flex ${
+                hotZoneActive
+                  ? "bg-ink text-white"
+                  : "bg-white/90 text-ink"
+              }`}
             >
               <svg className="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2C8.134 4.4 6 7.8 6 11c0 3.314 2.686 6 6 6s6-2.686 6-6c0-3.2-2.134-6.6-6-9z" />
               </svg>
-              {t("hot_zone")}
+              {hotZone ? t("hot_zone") : t("hot_zone_unavailable")}
             </button>
           </div>
 

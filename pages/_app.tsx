@@ -8,7 +8,7 @@ import { useRouter } from "next/router";
 
 function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
-  const hideHeader = ["/", "/login", "/rescue"].includes(router.pathname);
+  const hideHeader = ["/", "/login", "/register"].includes(router.pathname);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

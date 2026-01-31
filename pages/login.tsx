@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useRouter } from "next/router";
 import { useUserStore } from "../store/user";
 import { useTranslation } from "next-i18next";
+import { API_BASE_URL } from "../lib/api";
 import { serverSideTranslations } from "next-i18next/serverSideTranslations";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -21,7 +22,7 @@ export default function LoginPage() {
     }
 
     try {
-      const res = await fetch("http://localhost:3001/api/auth/login", {
+      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -94,6 +95,34 @@ export default function LoginPage() {
             {t("login")}
           </button>
         </form>
+
+        <div className="mt-4 text-center text-sm text-ink-muted">
+          {t("no_account")}{" "}
+          <button
+            onClick={() => router.push("/register")}
+            className="font-semibold text-ink hover:underline"
+          >
+            {t("create_account")}
+          </button>
+        </div>
+
+        <div className="mt-3 text-center text-xs text-ink-muted">
+          {t("by_continuing")}{" "}
+          <button
+            onClick={() => router.push("/terms")}
+            className="font-semibold text-ink hover:underline"
+          >
+            {t("terms_title")}
+          </button>{" "}
+          {t("and")}{" "}
+          <button
+            onClick={() => router.push("/privacy")}
+            className="font-semibold text-ink hover:underline"
+          >
+            {t("privacy_title")}
+          </button>
+          .
+        </div>
       </div>
     </div>
   );

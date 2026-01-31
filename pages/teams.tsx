@@ -3,6 +3,7 @@ import { useUserStore } from "../store/user";
 import { useRouter } from "next/router";
 import { serverSideTranslations } from "next-i18next/serverSideTranslations";
 import { useTranslation } from "next-i18next";
+import { API_BASE_URL } from "../lib/api";
 import Link from "next/link";
 
 interface Team {
@@ -29,6 +30,7 @@ export default function TeamsPage() {
   const { t } = useTranslation("common");
   const [teams, setTeams] = useState<Team[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [subscriptionPlan, setSubscriptionPlan] = useState("free");
   const token = useUserStore((state) => state.token);
   const router = useRouter();
 
@@ -41,7 +43,7 @@ export default function TeamsPage() {
       }
     }
 
-    fetch("http://localhost:3001/api/teams", {
+    fetch(`${API_BASE_URL}/api/teams`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
@@ -53,11 +55,22 @@ export default function TeamsPage() {
         alert(t("error_loading_teams"));
         setIsLoading(false);
       });
+
+    fetch(`${API_BASE_URL}/api/subscriptions/current`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then((data) => setSubscriptionPlan(data.currentPlan || "free"))
+      .catch(() => undefined);
   }, [token]);
 
   const handleJoinTeam = async (teamId: number) => {
+    if (subscriptionPlan === "free") {
+      alert(t("premium_required"));
+      return;
+    }
     try {
-      const response = await fetch(`http://localhost:3001/api/teams/${teamId}/join`, {
+      const response = await fetch(`${API_BASE_URL}/api/teams/${teamId}/join`, {
         method: "POST",
         headers: { 
           Authorization: `Bearer ${token}`,
@@ -71,7 +84,11 @@ export default function TeamsPage() {
         window.location.reload();
       } else {
         const error = await response.json();
-        alert(error.error || t("error_join_team"));
+        if (response.status === 403) {
+          alert(t("premium_required"));
+        } else {
+          alert(error.error || t("error_join_team"));
+        }
       }
     } catch (error) {
       alert(t("connection_error"));
@@ -99,14 +116,22 @@ export default function TeamsPage() {
             </p>
             <h1 className="font-display text-3xl font-semibold text-ink">{t("teams")}</h1>
           </div>
-          <Link href="/teams/create">
-            <button className="flex items-center gap-2 rounded-full bg-ink px-6 py-3 text-sm font-semibold text-white shadow-pill transition hover:-translate-y-0.5">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              {t("create_team")}
-            </button>
-          </Link>
+          <button
+            onClick={() => {
+              if (subscriptionPlan === "free") {
+                alert(t("premium_required"));
+                router.push("/subscription");
+                return;
+              }
+              router.push("/teams/create");
+            }}
+            className="flex items-center gap-2 rounded-full bg-ink px-6 py-3 text-sm font-semibold text-white shadow-pill transition hover:-translate-y-0.5"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            {t("create_team")}
+          </button>
         </div>
 
         {teams.length === 0 ? (
