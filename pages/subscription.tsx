@@ -48,13 +48,15 @@ export default function SubscriptionPage() {
         setIsLoading(false);
       })
       .catch(() => {
-        alert("Error al cargar información de suscripción");
+        alert(t("error_loading_subscription"));
         setIsLoading(false);
       });
   }, [token]);
 
   const handleSubscribe = async (planType: 'premium' | 'pro') => {
-    if (!confirm(`¿Confirmas la suscripción al plan ${plans[planType]?.name} por $${plans[planType]?.price}/mes?`)) {
+    const planName = plans[planType]?.name || t(`plan_${planType}`);
+    const planPrice = plans[planType]?.price ?? "";
+    if (!confirm(t("confirm_subscribe", { plan: planName, price: planPrice }))) {
       return;
     }
 
@@ -77,21 +79,21 @@ export default function SubscriptionPage() {
       });
 
       if (response.ok) {
-        alert("¡Suscripción exitosa!");
+        alert(t("subscription_success"));
         window.location.reload();
       } else {
         const error = await response.json();
-        alert(error.error || "Error al procesar la suscripción");
+        alert(error.error || t("subscription_process_error"));
       }
     } catch (error) {
-      alert("Error de conexión");
+      alert(t("connection_error"));
     } finally {
       setIsProcessing(false);
     }
   };
 
   const handleCancelSubscription = async () => {
-    if (!confirm("¿Estás seguro de que deseas cancelar tu suscripción?")) {
+    if (!confirm(t("confirm_cancel_subscription"))) {
       return;
     }
 
@@ -102,14 +104,14 @@ export default function SubscriptionPage() {
       });
 
       if (response.ok) {
-        alert("Suscripción cancelada exitosamente");
+        alert(t("subscription_cancelled_success"));
         window.location.reload();
       } else {
         const error = await response.json();
-        alert(error.error || "Error al cancelar la suscripción");
+        alert(error.error || t("subscription_cancel_error"));
       }
     } catch (error) {
-      alert("Error de conexión");
+      alert(t("connection_error"));
     }
   };
 
@@ -129,7 +131,7 @@ export default function SubscriptionPage() {
       <div className="mx-auto w-full max-w-6xl">
         <div className="mb-12 text-center">
           <p className="text-xs uppercase tracking-[0.3em] text-ink-muted">
-            Membresías
+            {t("memberships")}
           </p>
           <h1 className="font-display text-4xl font-semibold text-ink">{t("subscription")}</h1>
           <p className="mt-2 text-lg text-ink-muted">{t("choose_plan_description")}</p>

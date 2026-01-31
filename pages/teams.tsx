@@ -50,7 +50,7 @@ export default function TeamsPage() {
         setIsLoading(false);
       })
       .catch(() => {
-        alert("Error al cargar equipos");
+        alert(t("error_loading_teams"));
         setIsLoading(false);
       });
   }, [token]);
@@ -66,15 +66,15 @@ export default function TeamsPage() {
       });
 
       if (response.ok) {
-        alert("Te has unido al equipo exitosamente");
+        alert(t("team_joined_success"));
         // Refresh teams list
         window.location.reload();
       } else {
         const error = await response.json();
-        alert(error.error || "Error al unirse al equipo");
+        alert(error.error || t("error_join_team"));
       }
     } catch (error) {
-      alert("Error de conexión");
+      alert(t("connection_error"));
     }
   };
 
@@ -95,7 +95,7 @@ export default function TeamsPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-ink-muted">
-              Coordinación de equipos
+              {t("team_coordination")}
             </p>
             <h1 className="font-display text-3xl font-semibold text-ink">{t("teams")}</h1>
           </div>

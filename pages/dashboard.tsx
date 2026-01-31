@@ -97,7 +97,7 @@ export default function DashboardPage() {
         (pos) => {
           setUserLocation([pos.coords.latitude, pos.coords.longitude]);
         },
-        () => console.warn("No se pudo obtener ubicación")
+        () => console.warn(t("location_unavailable"))
       );
     }
   }, []);
@@ -139,12 +139,15 @@ export default function DashboardPage() {
         setLocating(false);
       },
       () => {
-        alert("Error al obtener ubicación");
+        alert(t("error_fetch_location"));
         setLocating(false);
       },
       { timeout: 10000 }
     );
   };
+
+  const formatRescueStatus = (value?: string | null) =>
+    value ? t(`rescue_status_${value}`, { defaultValue: value }) : "";
 
   if (loading) return <p className="p-4 text-ink-muted">{t("loading_rescues")}</p>;
 
@@ -156,14 +159,14 @@ export default function DashboardPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.3em] text-ink-muted">
-                  Panel principal
+                  {t("main_panel")}
                 </p>
                 <h1 className="font-display text-2xl font-semibold text-ink">
                   {t("rescue_list")}
                 </h1>
               </div>
               <span className="rounded-full bg-ink px-3 py-1 text-xs font-semibold text-white">
-                {rescues.length} activos
+                {t("active_count", { count: rescues.length })}
               </span>
             </div>
 
@@ -184,7 +187,7 @@ export default function DashboardPage() {
                       <strong>{t("message")}:</strong> {rescue.message || "—"}
                     </p>
                     <p className="text-sm text-ink-muted">
-                      <strong>{t("status")}:</strong> {rescue.status}
+                      <strong>{t("status")}:</strong> {formatRescueStatus(rescue.status)}
                     </p>
                     <p className="text-xs text-ink-muted">
                       {t("date")}: {new Date(rescue.createdAt).toLocaleString()}
@@ -203,7 +206,7 @@ export default function DashboardPage() {
               {t("request_rescue")}
             </h2>
             <p className="mt-2 text-sm text-ink-muted">
-              Enviá tu ubicación para activar la asistencia.
+              {t("send_location_description")}
             </p>
 
             <form
@@ -237,7 +240,7 @@ export default function DashboardPage() {
                   });
 
                   const data = await res.json();
-                  if (!res.ok) return alert(data.error || "Error");
+                  if (!res.ok) return alert(data.error || t("error"));
 
                   setRescues((prev) => [data, ...prev]);
                   setLat("");
@@ -251,7 +254,7 @@ export default function DashboardPage() {
             setAssistanceChannel("");
             setAssistanceProvider("");
           } catch {
-            alert("Error al conectar");
+            alert(t("connection_error"));
           }
         }}
         className="mt-5 space-y-4"
@@ -261,7 +264,7 @@ export default function DashboardPage() {
                   type="number"
                   step="any"
                   required
-                  placeholder="Latitud"
+                  placeholder={t("latitude")}
                   value={lat}
                   onChange={(e) => setLat(e.target.value)}
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none"
@@ -270,7 +273,7 @@ export default function DashboardPage() {
                   type="number"
                   step="any"
                   required
-                  placeholder="Longitud"
+                  placeholder={t("longitude")}
                   value={lng}
                   onChange={(e) => setLng(e.target.value)}
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none"
@@ -282,7 +285,7 @@ export default function DashboardPage() {
                 disabled={locating}
                 className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-ink shadow-pill transition hover:-translate-y-0.5"
               >
-                {locating ? "Obteniendo ubicación…" : t("use_location")}
+                {locating ? t("location_fetching") : t("use_location")}
               </button>
 
               <textarea
@@ -407,8 +410,8 @@ export default function DashboardPage() {
           {(rescues.length > 0 || userLocation) && rescueIcon && (
             <div className="rounded-[28px] border border-slate-100/80 bg-white/90 p-4 shadow-card backdrop-blur">
               <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-ink">Mapa en vivo</h3>
-                <span className="text-xs text-ink-muted">Actualizado</span>
+                <h3 className="text-sm font-semibold text-ink">{t("live_map")}</h3>
+                <span className="text-xs text-ink-muted">{t("updated")}</span>
               </div>
               <div className="h-80 overflow-hidden rounded-2xl">
                 <MapContainer
@@ -432,7 +435,7 @@ export default function DashboardPage() {
                       <Popup>
                         {rescue.message || "—"}
                         <br />
-                        {t("status")}: {rescue.status}
+                        {t("status")}: {formatRescueStatus(rescue.status)}
                       </Popup>
                     </Marker>
                   ))}

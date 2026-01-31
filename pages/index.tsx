@@ -11,10 +11,10 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>TrailGuard - Asistencia Off-Road</title>
+        <title>{t("home_title")}</title>
         <meta
           name="description"
-          content="Asistencia off-road, rescates colaborativos y coordinación en tiempo real."
+          content={t("home_description")}
         />
       </Head>
       <main className="min-h-screen px-4 py-16">
@@ -22,10 +22,12 @@ export default function Home() {
           <div className="space-y-6">
             <div className="inline-flex items-center gap-3 rounded-full bg-white/80 px-4 py-2 shadow-pill">
               <span className="text-xs font-semibold uppercase tracking-[0.35em] text-red-500">
-                Sistema oficial
+                {t("official_system")}
               </span>
               <span className="h-1 w-1 rounded-full bg-red-400"></span>
-              <span className="text-xs font-semibold text-ink-muted">Mar del Plata</span>
+              <span className="text-xs font-semibold text-ink-muted">
+                {t("home_location")}
+              </span>
             </div>
 
             <h1 className="font-display text-4xl font-semibold text-ink md:text-5xl">
@@ -46,18 +48,18 @@ export default function Home() {
                 onClick={() => router.push("/rescue")}
                 className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-ink shadow-pill transition hover:-translate-y-0.5"
               >
-                Ver mapa en vivo
+                {t("view_live_map")}
               </button>
             </div>
 
             <div className="flex items-center gap-6 text-sm text-ink-muted">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
-                Rescates coordinados
+                {t("coordinated_rescues")}
               </div>
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-red-400"></span>
-                Alertas activas
+                {t("active_alerts")}
               </div>
             </div>
           </div>
@@ -71,37 +73,36 @@ export default function Home() {
                 <div className="flex items-center gap-3">
                   <Image
                     src="/images/logo.png"
-                    alt="TrailGuard Logo"
+                    alt="TrailGuard"
                     width={64}
                     height={64}
                     className="h-14 w-14 rounded-2xl object-cover"
                   />
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-red-500">
-                      Sistema oficial
+                      {t("official_system")}
                     </p>
                     <p className="font-display text-lg font-semibold text-ink">
-                      Panel rápido
+                      {t("quick_panel")}
                     </p>
                   </div>
                 </div>
                 <span className="rounded-full bg-ink px-3 py-1 text-xs font-semibold text-white">
-                  Live
+                  {t("live")}
                 </span>
               </div>
 
               <div className="mt-6 space-y-4">
                 <div className="rounded-2xl bg-slate-50 px-4 py-3">
                   <p className="text-xs uppercase tracking-[0.24em] text-ink-muted">
-                    Estado actual
+                    {t("current_status")}
                   </p>
                   <p className="mt-2 text-xl font-semibold text-ink">
-                    12 reportes activos
+                    {t("active_reports_count", { count: 12 })}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-5 text-sm text-ink-muted">
-                  Conecta equipos, comparte rutas y coordina rescates en
-                  segundos.
+                  {t("home_card_blurb")}
                 </div>
               </div>
             </div>

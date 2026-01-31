@@ -25,8 +25,8 @@ vi.mock("react-toastify", () => ({
 describe("LoginPage", () => {
   it("renders login form fields", () => {
     render(<LoginPage />);
-    expect(screen.getByPlaceholderText("Email")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Contraseña")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("email")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("password")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /login/i })).toBeInTheDocument();
   });
 });

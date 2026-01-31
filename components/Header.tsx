@@ -7,7 +7,13 @@ export default function Header() {
   const router = useRouter();
   const { locale, push, pathname, query } = router;
   const { t } = useTranslation("common");
-  const nextLocale = locale === "es" ? "en" : "es";
+  const locales = router.locales ?? ["es", "en", "pt"];
+  const currentLocale = locale ?? router.defaultLocale ?? "es";
+  const currentIndex = locales.indexOf(currentLocale);
+  const nextLocale =
+    currentIndex === -1
+      ? locales[0]
+      : locales[(currentIndex + 1) % locales.length];
   const [menuOpen, setMenuOpen] = useState(false);
 
   const switchLanguage = () => {
@@ -36,7 +42,7 @@ export default function Header() {
           />
           <div className="text-left">
             <p className="text-[11px] uppercase tracking-[0.2em] text-red-500">
-              Sistema oficial
+              {t("official_system")}
             </p>
             <p className="font-display text-lg font-semibold text-ink">
               TrailGuard
@@ -64,7 +70,7 @@ export default function Header() {
           <button
             onClick={() => setMenuOpen((prev) => !prev)}
             className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-ink shadow-pill md:hidden"
-            aria-label="Abrir menú"
+            aria-label={t("open_menu")}
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -74,7 +80,7 @@ export default function Header() {
             onClick={switchLanguage}
             className="rounded-full bg-white px-3 py-2 text-xs font-semibold text-ink shadow-pill"
           >
-            🌐 {locale?.toUpperCase()}
+            🌐 {currentLocale.toUpperCase()}
           </button>
         </div>
       </div>

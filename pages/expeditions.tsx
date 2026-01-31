@@ -79,7 +79,7 @@ export default function ExpeditionsPage() {
         setIsLoading(false);
       })
       .catch(() => {
-        alert("Error al cargar expediciones");
+        alert(t("error_loading_expeditions"));
         setIsLoading(false);
       });
   }, [token, filter, router, setToken]);
@@ -95,14 +95,14 @@ export default function ExpeditionsPage() {
       });
 
       if (response.ok) {
-        alert("Te has unido a la expedición exitosamente");
+        alert(t("expedition_joined_success"));
         window.location.reload();
       } else {
         const error = await response.json();
-        alert(error.error || "Error al unirse a la expedición");
+        alert(error.error || t("error_join_expedition"));
       }
     } catch (error) {
-      alert("Error de conexión");
+      alert(t("connection_error"));
     }
   };
 
@@ -127,7 +127,7 @@ export default function ExpeditionsPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-ink-muted">
-              Exploración guiada
+              {t("guided_exploration")}
             </p>
             <h1 className="font-display text-3xl font-semibold text-ink">
               {t("expeditions")}

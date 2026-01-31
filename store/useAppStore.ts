@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 
 type AppState = {
-  language: 'es' | 'en';
+  language: 'es' | 'en' | 'pt';
   isPanicActive: boolean;
-  setLanguage: (lang: 'es' | 'en') => void;
+  setLanguage: (lang: 'es' | 'en' | 'pt') => void;
   triggerPanic: () => void;
 };
 

@@ -135,7 +135,7 @@ export default function RescuesPage() {
         console.error("Respuesta inválida de rescates:", data);
         setRescues([]);
       })
-      .catch(() => alert("Error al cargar rescates"));
+      .catch(() => alert(t("error_loading_rescues")));
   }, [
     token,
     setToken,
@@ -191,7 +191,7 @@ export default function RescuesPage() {
         });
 
         if (!response.ok || !response.body) {
-          throw new Error("No se pudo abrir el stream");
+          throw new Error(t("stream_open_failed"));
         }
 
         const reader = response.body.getReader();
@@ -290,6 +290,8 @@ export default function RescuesPage() {
     setMapBounds(nextBounds);
   }, []);
 
+  const formatRescueStatus = (value?: string | null) =>
+    value ? t(`rescue_status_${value}`, { defaultValue: value }) : "";
 
   const filteredRescues = useMemo(() => {
     if (filter === "all") return rescues;
@@ -327,7 +329,7 @@ export default function RescuesPage() {
           />
           <div>
             <p className="text-[11px] uppercase tracking-[0.2em] text-red-500">
-              Sistema oficial
+              {t("official_system")}
             </p>
             <p className="font-display text-lg font-semibold text-ink">TrailGuard</p>
           </div>
@@ -455,7 +457,7 @@ export default function RescuesPage() {
           <p className="mt-3 text-3xl font-semibold text-ink">{filteredRescues.length}</p>
         </div>
         <div className="rounded-[24px] border border-red-100 bg-red-50/80 p-4 text-center shadow-card">
-          <p className="text-xs uppercase tracking-[0.3em] text-red-400">Alertas</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-red-400">{t("alerts")}</p>
           <div className="mt-3 flex items-center justify-center">
             <svg className="h-8 w-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z" />
@@ -474,7 +476,7 @@ export default function RescuesPage() {
 
         <div className="mt-4 space-y-3">
           {recentRescues.length === 0 ? (
-            <p className="text-sm text-ink-muted">Sin alertas recientes.</p>
+            <p className="text-sm text-ink-muted">{t("no_recent_alerts")}</p>
           ) : (
             recentRescues.map((rescue: any) => (
               <div
@@ -482,7 +484,7 @@ export default function RescuesPage() {
                 className="rounded-2xl border border-slate-100/80 bg-white px-3 py-2 text-sm text-ink-muted"
               >
                 <p className="font-semibold text-ink">
-                  {rescue.message || "Alerta registrada"}
+                  {rescue.message || t("alert_logged")}
                 </p>
                 <p className="text-xs text-ink-muted">
                   {rescue.latitude?.toFixed?.(3)}, {rescue.longitude?.toFixed?.(3)}
@@ -534,7 +536,7 @@ export default function RescuesPage() {
                     <Popup>
                       {r.message || "—"}
                       <br />
-                      {t("status")}: {r.status}
+                      {t("status")}: {formatRescueStatus(r.status)}
                       {r.problemType && (
                         <>
                           <br />
@@ -634,9 +636,9 @@ export default function RescuesPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.3em] text-ink-muted">
-                    Panel
+                    {t("panel")}
                   </p>
-                  <p className="font-display text-lg font-semibold text-ink">Alertas</p>
+                  <p className="font-display text-lg font-semibold text-ink">{t("alerts")}</p>
                 </div>
                 <button
                   onClick={() => setPanelOpen(false)}

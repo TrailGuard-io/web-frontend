@@ -96,7 +96,7 @@ The application includes the following pages:
 
 ### Internationalization
 
-- Multi-language support (English and Spanish)
+- Multi-language support (English, Spanish, and Portuguese)
 - Dynamic language switching
 
 ## Project Structure

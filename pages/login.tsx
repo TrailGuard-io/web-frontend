@@ -16,7 +16,7 @@ export default function LoginPage() {
   const login = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
-      toast.error("Completa todos los campos");
+      toast.error(t("login_fill_fields"));
       return;
     }
 
@@ -30,16 +30,16 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        toast.error(data.error || "Login inválido");
+        toast.error(data.error || t("login_invalid"));
         return;
       }
 
       localStorage.setItem("token", data.token);
       setToken(data.token);
-      toast.success("Login exitoso");
+      toast.success(t("login_success"));
       router.push("/dashboard");
     } catch {
-      toast.error("Error al conectar");
+      toast.error(t("connection_error"));
     }
   };
 
@@ -58,7 +58,7 @@ export default function LoginPage() {
           />
           <div>
             <p className="text-[11px] uppercase tracking-[0.2em] text-red-500">
-              Sistema oficial
+              {t("official_system")}
             </p>
             <h1 className="font-display text-2xl font-semibold text-ink">
               {t("login")}
@@ -67,14 +67,14 @@ export default function LoginPage() {
         </div>
 
         <p className="mt-3 text-sm text-ink-muted">
-          Accedé a tus expediciones y rescates en tiempo real.
+          {t("login_subtitle")}
         </p>
 
         <form onSubmit={login} className="mt-6 space-y-4">
           <input
             type="email"
             required
-            placeholder="Email"
+            placeholder={t("email")}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-ink placeholder:text-slate-400 focus:border-ink focus:outline-none"
@@ -82,7 +82,7 @@ export default function LoginPage() {
           <input
             type="password"
             required
-            placeholder="Contraseña"
+            placeholder={t("password")}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-ink placeholder:text-slate-400 focus:border-ink focus:outline-none"
