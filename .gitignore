@@ -87,7 +87,6 @@ dist
 
 # Gatsby files
 .cache/
-public
 
 # Storybook build outputs
 .out
@@ -126,4 +125,4 @@ ehthumbs.db
 Thumbs.db
 
 # Public assets (images, icons, etc.)
-/public/ 
+# NOTE: keep public tracked so locales ship to prod.
