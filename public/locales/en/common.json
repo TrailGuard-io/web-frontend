@@ -4,6 +4,7 @@
   "login": "Login",
   "login_button": "Get Started",
   "logout": "Logout",
+  "logout_description": "End your session on this device.",
   "dashboard": "Dashboard",
   "rescue": "Rescue",
   "profile": "Profile",

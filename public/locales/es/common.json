@@ -4,6 +4,7 @@
   "login": "Iniciar Sesión",
   "login_button": "Comenzar",
   "logout": "Cerrar Sesión",
+  "logout_description": "Cerrar la sesión en este dispositivo.",
   "dashboard": "Panel de Control",
   "rescue": "Rescate",
   "profile": "Perfil",

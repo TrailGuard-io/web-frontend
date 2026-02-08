@@ -21,6 +21,7 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [confirmText, setConfirmText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     const storedToken = token || localStorage.getItem("token");
@@ -63,6 +64,25 @@ export default function SettingsPage() {
     }
   };
 
+  const handleLogout = async () => {
+    const storedToken = token || localStorage.getItem("token");
+    setIsLoggingOut(true);
+    try {
+      await fetch(`${API_BASE_URL}/api/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+        headers: storedToken ? { Authorization: `Bearer ${storedToken}` } : {},
+      });
+    } catch {
+      // Ignore logout network errors and clear locally.
+    } finally {
+      localStorage.removeItem("token");
+      clear();
+      setIsLoggingOut(false);
+      router.push("/login");
+    }
+  };
+
   return (
     <div className="min-h-screen px-4 py-12">
       <div className="mx-auto w-full max-w-4xl space-y-8">
@@ -96,6 +116,20 @@ export default function SettingsPage() {
           ) : (
             <p className="mt-4 text-sm text-ink-muted">{t("loading")}</p>
           )}
+        </div>
+
+        <div className="rounded-[24px] border border-slate-100/80 bg-white/90 p-6 shadow-card">
+          <h2 className="text-lg font-semibold text-ink">{t("logout")}</h2>
+          <p className="mt-2 text-sm text-ink-muted">
+            {t("logout_description")}
+          </p>
+          <button
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className="mt-4 rounded-full bg-ink px-6 py-3 text-sm font-semibold text-white shadow-pill transition hover:-translate-y-0.5 disabled:opacity-50"
+          >
+            {isLoggingOut ? t("processing") : t("logout")}
+          </button>
         </div>
 
         <div className="rounded-[24px] border border-rose-100 bg-rose-50/70 p-6">

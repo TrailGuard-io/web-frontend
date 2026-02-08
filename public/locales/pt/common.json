@@ -4,6 +4,7 @@
   "login": "Login",
   "login_button": "Começar",
   "logout": "Sair",
+  "logout_description": "Encerrar a sessão neste dispositivo.",
   "dashboard": "Painel",
   "rescue": "Resgate",
   "profile": "Perfil",
