@@ -2,6 +2,9 @@ const CACHE_NAME = "trailguard-shell-v1";
 const CORE_ASSETS = [
   "/",
   "/manifest.webmanifest",
+  "/icons/apple-touch-icon.png",
+  "/icons/icon-16.png",
+  "/icons/icon-32.png",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/icons/icon-512-maskable.png",

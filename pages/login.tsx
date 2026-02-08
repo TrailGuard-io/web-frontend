@@ -14,6 +14,10 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const handleSocialLogin = (provider: "google" | "facebook" | "apple") => {
+    window.location.href = `${API_BASE_URL}/api/auth/${provider}`;
+  };
+
   const login = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
@@ -95,6 +99,84 @@ export default function LoginPage() {
             {t("login")}
           </button>
         </form>
+
+        <div className="mt-6 flex items-center gap-3 text-xs text-ink-muted">
+          <div className="h-px flex-1 bg-slate-200" />
+          <span>{t("or_continue_with")}</span>
+          <div className="h-px flex-1 bg-slate-200" />
+        </div>
+
+        <div className="mt-4 grid gap-3">
+          <button
+            type="button"
+            onClick={() => handleSocialLogin("google")}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-ink shadow-sm transition hover:-translate-y-0.5"
+          >
+            <svg
+              data-testid="google-icon"
+              aria-hidden="true"
+              className="h-5 w-5"
+              viewBox="0 0 24 24"
+              fill="none"
+            >
+              <path
+                d="M23.04 12.261c0-.816-.073-1.6-.209-2.348H12v4.444h6.189a5.29 5.29 0 0 1-2.293 3.47v2.87h3.71c2.17-2 3.434-4.95 3.434-8.436Z"
+                fill="#4285F4"
+              />
+              <path
+                d="M12 24c3.24 0 5.955-1.074 7.94-2.903l-3.71-2.87c-1.03.694-2.35 1.104-4.23 1.104-3.126 0-5.777-2.11-6.72-4.944H1.446v3.004A12 12 0 0 0 12 24Z"
+                fill="#34A853"
+              />
+              <path
+                d="M5.28 14.387A7.206 7.206 0 0 1 4.9 12c0-.828.141-1.632.38-2.387V6.61H1.446A12 12 0 0 0 0 12c0 1.94.464 3.77 1.446 5.39l3.834-3.003Z"
+                fill="#FBBC05"
+              />
+              <path
+                d="M12 4.76c1.764 0 3.35.606 4.599 1.794l3.45-3.45C17.95 1.075 15.24 0 12 0A12 12 0 0 0 1.446 6.61l3.834 3.003C6.223 6.87 8.874 4.76 12 4.76Z"
+                fill="#EA4335"
+              />
+            </svg>
+            {t("continue_with_google")}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSocialLogin("facebook")}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-ink shadow-sm transition hover:-translate-y-0.5"
+          >
+            <svg
+              data-testid="facebook-icon"
+              aria-hidden="true"
+              className="h-5 w-5"
+              viewBox="0 0 24 24"
+              fill="none"
+            >
+              <path
+                d="M13.5 8.667V7.2c0-.72.48-.9.82-.9h1.68V3.6H13.5c-2.49 0-3.86 1.86-3.86 3.86v1.207H8v2.7h1.64V20h3.86v-8.627h2.6l.4-2.706h-3Z"
+                fill="#1877F2"
+              />
+            </svg>
+            {t("continue_with_facebook")}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSocialLogin("apple")}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-ink shadow-sm transition hover:-translate-y-0.5"
+          >
+            <svg
+              data-testid="apple-icon"
+              aria-hidden="true"
+              className="h-5 w-5"
+              viewBox="0 0 24 24"
+              fill="none"
+            >
+              <path
+                d="M16.7 12.9c0 3.31 2.9 4.41 2.93 4.42-.02.08-.46 1.58-1.51 3.12-.91 1.33-1.86 2.66-3.35 2.68-1.46.03-1.93-.86-3.6-.86-1.67 0-2.18.83-3.56.89-1.42.05-2.5-1.42-3.41-2.74-1.86-2.69-3.29-7.6-1.38-10.92.95-1.65 2.66-2.7 4.52-2.73 1.41-.03 2.74.95 3.6.95.86 0 2.48-1.18 4.18-1.01.71.03 2.7.29 3.99 2.19-.1.06-2.38 1.39-2.36 4.01ZM14.5 2.97c.76-.92 1.27-2.2 1.13-3.47-1.1.04-2.42.73-3.21 1.65-.7.81-1.32 2.1-1.15 3.33 1.23.1 2.47-.62 3.23-1.51Z"
+                fill="#111827"
+              />
+            </svg>
+            {t("continue_with_apple")}
+          </button>
+        </div>
 
         <div className="mt-4 text-center text-sm text-ink-muted">
           {t("no_account")}{" "}

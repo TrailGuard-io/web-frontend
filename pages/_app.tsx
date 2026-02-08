@@ -5,6 +5,7 @@ import { appWithTranslation } from "next-i18next";
 import Header from "../components/Header";
 import { useEffect } from "react";
 import { useRouter } from "next/router";
+import PwaInstallBanner from "../components/PwaInstallBanner";
 
 function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
@@ -25,6 +26,7 @@ function MyApp({ Component, pageProps }: AppProps) {
   return (
     <>
       {!hideHeader && <Header />}
+      <PwaInstallBanner />
       <Component {...pageProps} />
     </>
   );

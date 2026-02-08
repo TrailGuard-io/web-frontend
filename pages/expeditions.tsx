@@ -77,11 +77,15 @@ export default function ExpeditionsPage() {
     })
       .then((res) => res.json())
       .then((data) => {
+        if (!Array.isArray(data)) {
+          throw new Error("Invalid expeditions response");
+        }
         setExpeditions(data);
         setIsLoading(false);
       })
       .catch(() => {
         alert(t("error_loading_expeditions"));
+        setExpeditions([]);
         setIsLoading(false);
       });
 

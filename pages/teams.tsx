@@ -32,48 +32,73 @@ export default function TeamsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [subscriptionPlan, setSubscriptionPlan] = useState("free");
   const token = useUserStore((state) => state.token);
+  const setToken = useUserStore((state) => state.setToken);
   const router = useRouter();
+  const [avatarErrors, setAvatarErrors] = useState<Record<number, boolean>>({});
+
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(/\s+/);
+    const first = parts[0]?.[0] ?? "";
+    const last = parts.length > 1 ? parts[parts.length - 1][0] : "";
+    return `${first}${last}`.toUpperCase();
+  };
+
+  const resolveAvatarUrl = (url?: string) => {
+    if (!url) return null;
+    if (url.startsWith("http")) return url;
+    const normalized = url.startsWith("/") ? url : `/${url}`;
+    return `${API_BASE_URL}${normalized}`;
+  };
 
   useEffect(() => {
-    if (!token) {
-      const stored = localStorage.getItem("token");
-      if (!stored) {
-        router.push("/login");
-        return;
-      }
+    const storedToken = token || localStorage.getItem("token");
+    if (!storedToken) {
+      router.push("/login");
+      return;
     }
 
+    if (!token) setToken(storedToken);
+
     fetch(`${API_BASE_URL}/api/teams`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${storedToken}` },
     })
       .then((res) => res.json())
       .then((data) => {
+        if (!Array.isArray(data)) {
+          throw new Error("Invalid teams response");
+        }
         setTeams(data);
         setIsLoading(false);
       })
       .catch(() => {
         alert(t("error_loading_teams"));
+        setTeams([]);
         setIsLoading(false);
       });
 
     fetch(`${API_BASE_URL}/api/subscriptions/current`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${storedToken}` },
     })
       .then((res) => res.json())
       .then((data) => setSubscriptionPlan(data.currentPlan || "free"))
       .catch(() => undefined);
-  }, [token]);
+  }, [token, router, setToken, t]);
 
   const handleJoinTeam = async (teamId: number) => {
     if (subscriptionPlan === "free") {
       alert(t("premium_required"));
       return;
     }
+    const authToken = token || localStorage.getItem("token");
+    if (!authToken) {
+      router.push("/login");
+      return;
+    }
     try {
       const response = await fetch(`${API_BASE_URL}/api/teams/${teamId}/join`, {
         method: "POST",
         headers: { 
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${authToken}`,
           "Content-Type": "application/json"
         },
       });
@@ -154,12 +179,19 @@ export default function TeamsPage() {
                         {t("created_by")}: {team.owner?.name || team.owner?.email}
                       </p>
                     </div>
-                    {team.avatar && (
+                    {team.avatar && !avatarErrors[team.id] ? (
                       <img 
-                        src={team.avatar} 
+                        src={resolveAvatarUrl(team.avatar) || undefined} 
                         alt={team.name}
                         className="w-12 h-12 rounded-full object-cover"
+                        onError={() =>
+                          setAvatarErrors((prev) => ({ ...prev, [team.id]: true }))
+                        }
                       />
+                    ) : (
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-ink">
+                        {getInitials(team.name)}
+                      </div>
                     )}
                   </div>
 

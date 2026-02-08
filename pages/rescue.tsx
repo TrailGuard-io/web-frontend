@@ -38,6 +38,8 @@ const ZoomControl = dynamic(
 );
 const MapEvents = dynamic(() => import("../components/MapEvents"), { ssr: false });
 
+const DEFAULT_CENTER: [number, number] = [-38.0055, -57.5426];
+
 export default function RescuesPage() {
   const { t } = useTranslation("common");
   const [rescues, setRescues] = useState([]);
@@ -50,7 +52,7 @@ export default function RescuesPage() {
   const [assistanceStatus, setAssistanceStatus] = useState("");
   const [assistanceChannel, setAssistanceChannel] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
-  const [mapCenter, setMapCenter] = useState<[number, number]>([-34.6, -58.4]);
+  const [mapCenter, setMapCenter] = useState<[number, number]>(DEFAULT_CENTER);
   const [mapKey, setMapKey] = useState(0);
   const [mapZoom, setMapZoom] = useState(5);
   const [searchQuery, setSearchQuery] = useState("");
@@ -365,10 +367,15 @@ export default function RescuesPage() {
     });
   }, [filter, rescues]);
 
+  const activeRescues = useMemo(
+    () => filteredRescues.filter((r: any) => r.status !== "resolved"),
+    [filteredRescues]
+  );
+
   const hotZone = useMemo(() => {
-    if (!filteredRescues.length) return null;
+    if (!activeRescues.length) return null;
     const buckets = new Map<string, { lat: number; lng: number; count: number }>();
-    filteredRescues.forEach((r: any) => {
+    activeRescues.forEach((r: any) => {
       if (typeof r.latitude !== "number" || typeof r.longitude !== "number") return;
       const latKey = Math.round(r.latitude * 100) / 100;
       const lngKey = Math.round(r.longitude * 100) / 100;
@@ -385,7 +392,7 @@ export default function RescuesPage() {
       if (!top || value.count > top.count) top = value;
     });
     return top;
-  }, [filteredRescues]);
+  }, [activeRescues]);
 
   const handleHotZone = () => {
     if (!hotZone) {
@@ -402,14 +409,14 @@ export default function RescuesPage() {
   };
 
   const recentRescues = useMemo(() => {
-    return [...filteredRescues]
+    return [...activeRescues]
       .sort((a: any, b: any) => {
         const aTime = new Date(a.createdAt || 0).getTime();
         const bTime = new Date(b.createdAt || 0).getTime();
         return bTime - aTime;
       })
       .slice(0, 4);
-  }, [filteredRescues]);
+  }, [activeRescues]);
 
   const sidebarContent = (
     <div className="space-y-6">
@@ -547,7 +554,7 @@ export default function RescuesPage() {
           <p className="text-xs uppercase tracking-[0.3em] text-ink-muted">
             {t("cases")}
           </p>
-          <p className="mt-3 text-3xl font-semibold text-ink">{filteredRescues.length}</p>
+          <p className="mt-3 text-3xl font-semibold text-ink">{activeRescues.length}</p>
         </div>
         <div className="rounded-[24px] border border-red-100 bg-red-50/80 p-4 text-center shadow-card">
           <p className="text-xs uppercase tracking-[0.3em] text-red-400">{t("alerts")}</p>
@@ -603,13 +610,13 @@ export default function RescuesPage() {
   );
 
   return (
-    <div className="min-h-screen">
-      <div className="relative min-h-screen lg:grid lg:grid-cols-[360px_1fr]">
-        <aside className="hidden min-h-screen border-r border-slate-200/70 bg-white/40 p-6 lg:block">
+    <div className="h-screen">
+      <div className="relative h-screen lg:grid lg:grid-cols-[360px_1fr]">
+        <aside className="hidden h-screen overflow-y-auto border-r border-slate-200/70 bg-white/40 p-6 lg:block">
           {sidebarContent}
         </aside>
 
-        <main className="relative min-h-screen">
+        <main className="relative h-screen overflow-hidden">
           <div className="absolute inset-0">
             {icon && (
               <MapContainer
@@ -621,7 +628,7 @@ export default function RescuesPage() {
               >
                 <MapEvents onBoundsChange={handleBoundsChange} />
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                <ZoomControl position="bottomright" />
+                <ZoomControl position="bottomleft" />
                 {hotZoneActive && hotZone && (
                   <Circle
                     center={[hotZone.lat, hotZone.lng]}
@@ -629,7 +636,7 @@ export default function RescuesPage() {
                     pathOptions={{ color: "#ef4444", fillColor: "#fecaca", fillOpacity: 0.35 }}
                   />
                 )}
-                {filteredRescues.map((r: any) => (
+                {activeRescues.map((r: any) => (
                   <Marker
                     key={r.id}
                     position={[r.latitude, r.longitude]}
@@ -680,59 +687,61 @@ export default function RescuesPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <div className="pointer-events-auto relative flex flex-1 items-center gap-2 rounded-2xl bg-white/90 px-4 py-3 shadow-card backdrop-blur">
-              <svg className="h-5 w-5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1010.5 3a7.5 7.5 0 006.15 12.65z" />
-              </svg>
-              <input
-                className="w-full bg-transparent text-sm text-ink placeholder:text-ink-muted focus:outline-none"
-                placeholder={`${t("search_placeholder")}...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    runSearch();
-                  }
-                }}
-                onFocus={() => {
-                  if (searchResults.length) setSearchOpen(true);
-                }}
-              />
-              <button
-                type="button"
-                onClick={runSearch}
-                className="rounded-full bg-ink px-3 py-1 text-[11px] font-semibold text-white shadow-pill"
-              >
-                {searchLoading ? "..." : t("search")}
-              </button>
-              {(searchLoading || searchOpen || searchError) && (
-                <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-10 rounded-2xl border border-slate-100 bg-white p-2 shadow-card">
-                  {searchLoading && (
-                    <p className="px-3 py-2 text-xs text-ink-muted">{t("search_loading")}</p>
-                  )}
-                  {searchError && (
-                    <p className="px-3 py-2 text-xs text-rose-500">{searchError}</p>
-                  )}
-                  {!searchLoading && !searchError && searchResults.length === 0 && (
-                    <p className="px-3 py-2 text-xs text-ink-muted">{t("search_empty")}</p>
-                  )}
-                  {!searchLoading && !searchError && searchResults.length > 0 && (
-                    <div className="max-h-48 overflow-y-auto">
-                      {searchResults.map((result) => (
-                        <button
-                          key={`${result.lat}-${result.lon}`}
-                          className="flex w-full items-start gap-2 rounded-xl px-3 py-2 text-left text-xs text-ink hover:bg-slate-50"
-                          onClick={() => selectSearchResult(result)}
-                        >
-                          <span className="mt-0.5 inline-flex h-2 w-2 flex-shrink-0 rounded-full bg-red-400" />
-                          <span>{result.display_name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+            <div className="pointer-events-auto flex flex-1 items-center justify-center">
+              <div className="relative flex w-full max-w-4xl items-center gap-2 rounded-2xl bg-white/90 px-4 py-3 shadow-card backdrop-blur">
+                <svg className="h-5 w-5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1010.5 3a7.5 7.5 0 006.15 12.65z" />
+                </svg>
+                <input
+                  className="w-full bg-transparent text-sm text-ink placeholder:text-ink-muted focus:outline-none"
+                  placeholder={`${t("search_placeholder")}...`}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      runSearch();
+                    }
+                  }}
+                  onFocus={() => {
+                    if (searchResults.length) setSearchOpen(true);
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={runSearch}
+                  className="rounded-full bg-ink px-3 py-1 text-[11px] font-semibold text-white shadow-pill"
+                >
+                  {searchLoading ? "..." : t("search")}
+                </button>
+                {(searchLoading || searchOpen || searchError) && (
+                  <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-10 rounded-2xl border border-slate-100 bg-white p-2 shadow-card">
+                    {searchLoading && (
+                      <p className="px-3 py-2 text-xs text-ink-muted">{t("search_loading")}</p>
+                    )}
+                    {searchError && (
+                      <p className="px-3 py-2 text-xs text-rose-500">{searchError}</p>
+                    )}
+                    {!searchLoading && !searchError && searchResults.length === 0 && (
+                      <p className="px-3 py-2 text-xs text-ink-muted">{t("search_empty")}</p>
+                    )}
+                    {!searchLoading && !searchError && searchResults.length > 0 && (
+                      <div className="max-h-48 overflow-y-auto">
+                        {searchResults.map((result) => (
+                          <button
+                            key={`${result.lat}-${result.lon}`}
+                            className="flex w-full items-start gap-2 rounded-xl px-3 py-2 text-left text-xs text-ink hover:bg-slate-50"
+                            onClick={() => selectSearchResult(result)}
+                          >
+                            <span className="mt-0.5 inline-flex h-2 w-2 flex-shrink-0 rounded-full bg-red-400" />
+                            <span>{result.display_name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
             <button
               onClick={handleHotZone}
