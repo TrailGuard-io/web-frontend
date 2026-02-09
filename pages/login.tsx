@@ -4,8 +4,7 @@ import { useUserStore } from "../store/user";
 import { useTranslation } from "next-i18next";
 import { API_BASE_URL } from "../lib/api";
 import { serverSideTranslations } from "next-i18next/serverSideTranslations";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify";
 
 export default function LoginPage() {
   const { t } = useTranslation("common");
@@ -50,7 +49,6 @@ export default function LoginPage() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center px-4 py-16">
-      <ToastContainer />
       <div className="absolute -top-10 left-10 h-40 w-40 rounded-full bg-red-100 blur-3xl" />
       <div className="absolute bottom-0 right-0 h-48 w-48 rounded-full bg-sky-100 blur-3xl" />
 

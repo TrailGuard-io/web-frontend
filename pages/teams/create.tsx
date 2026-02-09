@@ -4,6 +4,7 @@ import { useTranslation } from "next-i18next";
 import { serverSideTranslations } from "next-i18next/serverSideTranslations";
 import { API_BASE_URL } from "../../lib/api";
 import { useUserStore } from "../../store/user";
+import { toast } from "react-toastify";
 
 interface FeatureFlags {
   teams: boolean;
@@ -48,12 +49,12 @@ export default function CreateTeamPage() {
 
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
-      alert(t("team_name_required"));
+      toast.error(t("team_name_required"));
       return;
     }
 
     if (formData.maxMembers < 2 || formData.maxMembers > 50) {
-      alert(t("invalid_max_members"));
+      toast.error(t("invalid_max_members"));
       return;
     }
 
@@ -81,14 +82,14 @@ export default function CreateTeamPage() {
 
       if (!response.ok) {
         const error = await response.json();
-        alert(error.error || t("error"));
+        toast.error(error.error || t("error"));
         return;
       }
 
-      alert(t("team_created_successfully"));
+      toast.success(t("team_created_successfully"));
       router.push("/teams");
     } catch {
-      alert(t("connection_error"));
+      toast.error(t("connection_error"));
     } finally {
       setIsSubmitting(false);
     }

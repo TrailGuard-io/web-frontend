@@ -6,6 +6,9 @@ import Header from "../components/Header";
 import { useEffect } from "react";
 import { useRouter } from "next/router";
 import PwaInstallBanner from "../components/PwaInstallBanner";
+import NotificationsListener from "../components/NotificationsListener";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
@@ -27,6 +30,8 @@ function MyApp({ Component, pageProps }: AppProps) {
     <>
       {!hideHeader && <Header />}
       <PwaInstallBanner />
+      <ToastContainer position="top-right" autoClose={3500} />
+      <NotificationsListener />
       <Component {...pageProps} />
     </>
   );

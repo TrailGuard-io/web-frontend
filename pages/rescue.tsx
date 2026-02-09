@@ -26,12 +26,17 @@ const Marker = dynamic(
   () => import("react-leaflet").then((mod) => mod.Marker),
   { ssr: false }
 );
-const Popup = dynamic(() => import("react-leaflet").then((mod) => mod.Popup), {
-  ssr: false,
-});
 const Circle = dynamic(() => import("react-leaflet").then((mod) => mod.Circle), {
   ssr: false,
 });
+const CircleMarker = dynamic(
+  () => import("react-leaflet").then((mod) => mod.CircleMarker),
+  { ssr: false }
+);
+const Polyline = dynamic(
+  () => import("react-leaflet").then((mod) => mod.Polyline),
+  { ssr: false }
+);
 const ZoomControl = dynamic(
   () => import("react-leaflet").then((mod) => mod.ZoomControl),
   { ssr: false }
@@ -40,11 +45,80 @@ const MapEvents = dynamic(() => import("../components/MapEvents"), { ssr: false 
 
 const DEFAULT_CENTER: [number, number] = [-38.0055, -57.5426];
 
+interface RescueRecord {
+  id: number;
+  userId: number;
+  latitude: number;
+  longitude: number;
+  message?: string | null;
+  status: string;
+  problemType?: string | null;
+  vehicleType?: string | null;
+  assistanceStatus?: string | null;
+  assistanceProvider?: string | null;
+  assignedRescuerId?: number | null;
+  assignedTeamId?: number | null;
+  rescuerLatitude?: number | null;
+  rescuerLongitude?: number | null;
+  rescuerUpdatedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface TeamOption {
+  id: number;
+  name: string;
+  avatar?: string | null;
+}
+
+interface RescueCandidate {
+  id: number;
+  status: string;
+  user?: {
+    id: number;
+    name?: string | null;
+    email?: string | null;
+    avatar?: string | null;
+  } | null;
+  team?: {
+    id: number;
+    name: string;
+    avatar?: string | null;
+  } | null;
+}
+
+interface RescueMessage {
+  id: number;
+  content: string;
+  createdAt: string;
+  author: {
+    id: number;
+    name?: string | null;
+    email?: string | null;
+    avatar?: string | null;
+  };
+}
+
+const toRad = (value: number) => (value * Math.PI) / 180;
+const distanceKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const earthRadius = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadius * c;
+};
+
 export default function RescuesPage() {
   const { t } = useTranslation("common");
-  const [rescues, setRescues] = useState([]);
+  const [rescues, setRescues] = useState<RescueRecord[]>([]);
   const [icon, setIcon] = useState<any>(null);
   const [filter, setFilter] = useState<"all" | "today" | "week">("all");
+  const [statusFilter, setStatusFilter] = useState<"active" | "resolved" | "all">(
+    "active"
+  );
   const [vehicleType, setVehicleType] = useState("");
   const [drivetrain, setDrivetrain] = useState("");
   const [terrainType, setTerrainType] = useState("");
@@ -70,6 +144,22 @@ export default function RescuesPage() {
     maxLng: number;
   } | null>(null);
   const lastBoundsRef = useRef<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [selectedRescueId, setSelectedRescueId] = useState<number | null>(null);
+  const [candidates, setCandidates] = useState<RescueCandidate[]>([]);
+  const [loadingCandidates, setLoadingCandidates] = useState(false);
+  const [candidateError, setCandidateError] = useState<string | null>(null);
+  const [assigningCandidateId, setAssigningCandidateId] = useState<number | null>(null);
+  const [candidateSubmitting, setCandidateSubmitting] = useState(false);
+  const [teamOptions, setTeamOptions] = useState<TeamOption[]>([]);
+  const [teamCandidateId, setTeamCandidateId] = useState("");
+  const [messages, setMessages] = useState<RescueMessage[]>([]);
+  const [messageText, setMessageText] = useState("");
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [sharingLocation, setSharingLocation] = useState(false);
+  const locationWatchRef = useRef<number | null>(null);
+  const lastLocationSentRef = useRef<number>(0);
   const token = useUserStore((state) => state.token);
   const setToken = useUserStore((state) => state.setToken);
   const router = useRouter();
@@ -101,6 +191,44 @@ export default function RescuesPage() {
 
   useEffect(() => {
     const storedToken = token || localStorage.getItem("token");
+    if (!storedToken) return;
+
+    fetch(`${API_BASE_URL}/api/users/me`, {
+      headers: { Authorization: `Bearer ${storedToken}` },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.id) setCurrentUserId(data.id);
+      })
+      .catch(() => undefined);
+  }, [token]);
+
+  useEffect(() => {
+    const storedToken = token || localStorage.getItem("token");
+    if (!storedToken) return;
+
+    fetch(`${API_BASE_URL}/api/teams/mine`, {
+      headers: { Authorization: `Bearer ${storedToken}` },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setTeamOptions(
+            data.map((team) => ({
+              id: team.id,
+              name: team.name,
+              avatar: team.avatar ?? null,
+            }))
+          );
+        } else {
+          setTeamOptions([]);
+        }
+      })
+      .catch(() => setTeamOptions([]));
+  }, [token]);
+
+  useEffect(() => {
+    const storedToken = token || localStorage.getItem("token");
     if (!storedToken) {
       router.push("/login");
       return;
@@ -125,6 +253,10 @@ export default function RescuesPage() {
           ? new Date(now.getFullYear(), now.getMonth(), now.getDate())
           : new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       params.set("from", from.toISOString());
+    }
+
+    if (statusFilter === "resolved") {
+      params.set("status", "resolved");
     }
 
     if (mapBounds) {
@@ -165,6 +297,7 @@ export default function RescuesPage() {
     assistanceStatus,
     assistanceChannel,
     mapBounds,
+    statusFilter,
     router,
   ]);
 
@@ -187,6 +320,10 @@ export default function RescuesPage() {
           ? new Date(now.getFullYear(), now.getMonth(), now.getDate())
           : new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       params.set("from", from.toISOString());
+    }
+
+    if (statusFilter === "resolved") {
+      params.set("status", "resolved");
     }
 
     params.set("minLat", mapBounds.minLat.toString());
@@ -282,6 +419,7 @@ export default function RescuesPage() {
     assistanceStatus,
     assistanceChannel,
     mapBounds,
+    statusFilter,
   ]);
 
   const handleBoundsChange = useCallback((bounds: any) => {
@@ -308,8 +446,198 @@ export default function RescuesPage() {
     setMapBounds(nextBounds);
   }, []);
 
+  const selectedRescue = useMemo(
+    () => rescues.find((rescue) => rescue.id === selectedRescueId) || null,
+    [rescues, selectedRescueId]
+  );
+
+  const myTeamIds = useMemo(
+    () => new Set(teamOptions.map((team) => team.id)),
+    [teamOptions]
+  );
+
+  const isOwner = selectedRescue?.userId === currentUserId;
+  const isAssignedUser = selectedRescue?.assignedRescuerId === currentUserId;
+  const isAssignedTeamMember = Boolean(
+    selectedRescue?.assignedTeamId && myTeamIds.has(selectedRescue.assignedTeamId)
+  );
+  const canChat =
+    Boolean(selectedRescue?.assignedRescuerId || selectedRescue?.assignedTeamId) &&
+    Boolean(isOwner || isAssignedUser || isAssignedTeamMember);
+  const canShareLocation = Boolean(isAssignedUser || isAssignedTeamMember);
+
+  const myCandidate = useMemo(() => {
+    if (!currentUserId) return null;
+    return (
+      candidates.find((candidate) => candidate.user?.id === currentUserId) ||
+      candidates.find((candidate) =>
+        candidate.team?.id ? myTeamIds.has(candidate.team.id) : false
+      ) ||
+      null
+    );
+  }, [candidates, currentUserId, myTeamIds]);
+
+  const acceptedCandidate = useMemo(
+    () => candidates.find((candidate) => candidate.status === "accepted") || null,
+    [candidates]
+  );
+
+  const rescuerDistanceKm = useMemo(() => {
+    if (
+      !selectedRescue ||
+      selectedRescue.rescuerLatitude == null ||
+      selectedRescue.rescuerLongitude == null
+    ) {
+      return null;
+    }
+    return distanceKm(
+      selectedRescue.latitude,
+      selectedRescue.longitude,
+      selectedRescue.rescuerLatitude,
+      selectedRescue.rescuerLongitude
+    );
+  }, [selectedRescue]);
+
+  const rescueOpenForCandidates = Boolean(
+    selectedRescue &&
+      selectedRescue.status === "pending" &&
+      !selectedRescue.assignedRescuerId &&
+      !selectedRescue.assignedTeamId
+  );
+
   const formatRescueStatus = (value?: string | null) =>
     value ? t(`rescue_status_${value}`, { defaultValue: value }) : "";
+
+  const fetchCandidates = useCallback(async () => {
+    if (!selectedRescueId) return;
+    const storedToken = token || localStorage.getItem("token");
+    if (!storedToken) return;
+    setLoadingCandidates(true);
+    setCandidateError(null);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/rescue/${selectedRescueId}/candidates`,
+        {
+          headers: { Authorization: `Bearer ${storedToken}` },
+        }
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        setCandidateError(error.error || t("error"));
+        setCandidates([]);
+        return;
+      }
+      const data = await response.json();
+      setCandidates(Array.isArray(data) ? data : []);
+    } catch {
+      setCandidateError(t("connection_error"));
+    } finally {
+      setLoadingCandidates(false);
+    }
+  }, [selectedRescueId, token, t]);
+
+  const fetchMessages = useCallback(async () => {
+    if (!selectedRescueId || !canChat) return;
+    const storedToken = token || localStorage.getItem("token");
+    if (!storedToken) return;
+    setMessagesLoading(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/rescue/${selectedRescueId}/messages`,
+        {
+          headers: { Authorization: `Bearer ${storedToken}` },
+        }
+      );
+      if (!response.ok) {
+        setMessages([]);
+        return;
+      }
+      const data = await response.json();
+      setMessages(Array.isArray(data) ? data : []);
+    } catch {
+      setMessages([]);
+    } finally {
+      setMessagesLoading(false);
+    }
+  }, [selectedRescueId, token, canChat]);
+
+  useEffect(() => {
+    if (!selectedRescueId) {
+      setCandidates([]);
+      setMessages([]);
+      return;
+    }
+    fetchCandidates();
+  }, [
+    selectedRescueId,
+    selectedRescue?.status,
+    selectedRescue?.assignedRescuerId,
+    selectedRescue?.assignedTeamId,
+    fetchCandidates,
+  ]);
+
+  useEffect(() => {
+    if (!selectedRescueId || !canChat) {
+      setMessages([]);
+      return;
+    }
+    fetchMessages();
+    const interval = setInterval(fetchMessages, 5000);
+    return () => clearInterval(interval);
+  }, [selectedRescueId, canChat, fetchMessages]);
+
+  useEffect(() => {
+    if (!sharingLocation || !selectedRescueId || !canShareLocation) {
+      if (locationWatchRef.current !== null && typeof navigator !== "undefined") {
+        navigator.geolocation?.clearWatch(locationWatchRef.current);
+      }
+      locationWatchRef.current = null;
+      return;
+    }
+
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setSharingLocation(false);
+      return;
+    }
+
+    const storedToken = token || localStorage.getItem("token");
+    if (!storedToken) {
+      setSharingLocation(false);
+      return;
+    }
+
+    locationWatchRef.current = navigator.geolocation.watchPosition(
+      async (pos) => {
+        const now = Date.now();
+        if (now - lastLocationSentRef.current < 5000) return;
+        lastLocationSentRef.current = now;
+        try {
+          await fetch(`${API_BASE_URL}/api/rescue/${selectedRescueId}/location`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${storedToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+            }),
+          });
+        } catch {
+          // ignore
+        }
+      },
+      () => undefined,
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+    );
+
+    return () => {
+      if (locationWatchRef.current !== null) {
+        navigator.geolocation?.clearWatch(locationWatchRef.current);
+      }
+      locationWatchRef.current = null;
+    };
+  }, [sharingLocation, selectedRescueId, canShareLocation, token]);
 
   const runSearch = async () => {
     const query = searchQuery.trim();
@@ -352,6 +680,146 @@ export default function RescuesPage() {
     setSearchOpen(false);
   };
 
+  const handleCandidate = async (teamId?: number) => {
+    if (!selectedRescueId) return;
+    if (!rescueOpenForCandidates) return;
+    const storedToken = token || localStorage.getItem("token");
+    if (!storedToken) {
+      router.push("/login");
+      return;
+    }
+    setCandidateSubmitting(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/rescue/${selectedRescueId}/candidates`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${storedToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(teamId ? { teamId } : {}),
+        }
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        alert(error.error || t("error"));
+        return;
+      }
+      await fetchCandidates();
+    } catch {
+      alert(t("connection_error"));
+    } finally {
+      setCandidateSubmitting(false);
+    }
+  };
+
+  const handleAssignCandidate = async (candidateId: number) => {
+    if (!selectedRescueId) return;
+    const storedToken = token || localStorage.getItem("token");
+    if (!storedToken) {
+      router.push("/login");
+      return;
+    }
+    setAssigningCandidateId(candidateId);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/rescue/${selectedRescueId}/assign`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${storedToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ candidateId }),
+        }
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        alert(error.error || t("error"));
+        return;
+      }
+      const data = await response.json();
+      if (data?.rescue?.id) {
+        setRescues((prev) =>
+          prev.map((rescue) =>
+            rescue.id === data.rescue.id ? { ...rescue, ...data.rescue } : rescue
+          )
+        );
+      }
+      await fetchCandidates();
+    } catch {
+      alert(t("connection_error"));
+    } finally {
+      setAssigningCandidateId(null);
+    }
+  };
+
+  const handleRejectCandidate = async (candidateId: number) => {
+    if (!selectedRescueId) return;
+    const storedToken = token || localStorage.getItem("token");
+    if (!storedToken) {
+      router.push("/login");
+      return;
+    }
+    setAssigningCandidateId(candidateId);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/rescue/${selectedRescueId}/candidates/${candidateId}/reject`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${storedToken}` },
+        }
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        alert(error.error || t("error"));
+        return;
+      }
+      await fetchCandidates();
+    } catch {
+      alert(t("connection_error"));
+    } finally {
+      setAssigningCandidateId(null);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!selectedRescueId) return;
+    if (!messageText.trim()) return;
+    const storedToken = token || localStorage.getItem("token");
+    if (!storedToken) {
+      router.push("/login");
+      return;
+    }
+    setSendingMessage(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/rescue/${selectedRescueId}/messages`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${storedToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ content: messageText.trim() }),
+        }
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        alert(error.error || t("error"));
+        return;
+      }
+      const data = await response.json();
+      setMessages((prev) => [...prev, data]);
+      setMessageText("");
+    } catch {
+      alert(t("connection_error"));
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
   const filteredRescues = useMemo(() => {
     if (filter === "all") return rescues;
     const now = new Date();
@@ -372,10 +840,20 @@ export default function RescuesPage() {
     [filteredRescues]
   );
 
+  const visibleRescues = useMemo(() => {
+    if (statusFilter === "resolved") {
+      return filteredRescues.filter((r: any) => r.status === "resolved");
+    }
+    if (statusFilter === "all") {
+      return filteredRescues;
+    }
+    return activeRescues;
+  }, [statusFilter, filteredRescues, activeRescues]);
+
   const hotZone = useMemo(() => {
-    if (!activeRescues.length) return null;
+    if (!visibleRescues.length) return null;
     const buckets = new Map<string, { lat: number; lng: number; count: number }>();
-    activeRescues.forEach((r: any) => {
+    visibleRescues.forEach((r: any) => {
       if (typeof r.latitude !== "number" || typeof r.longitude !== "number") return;
       const latKey = Math.round(r.latitude * 100) / 100;
       const lngKey = Math.round(r.longitude * 100) / 100;
@@ -392,7 +870,7 @@ export default function RescuesPage() {
       if (!top || value.count > top.count) top = value;
     });
     return top;
-  }, [activeRescues]);
+  }, [visibleRescues]);
 
   const handleHotZone = () => {
     if (!hotZone) {
@@ -409,14 +887,14 @@ export default function RescuesPage() {
   };
 
   const recentRescues = useMemo(() => {
-    return [...activeRescues]
+    return [...visibleRescues]
       .sort((a: any, b: any) => {
         const aTime = new Date(a.createdAt || 0).getTime();
         const bTime = new Date(b.createdAt || 0).getTime();
         return bTime - aTime;
       })
       .slice(0, 4);
-  }, [activeRescues]);
+  }, [visibleRescues]);
 
   const sidebarContent = (
     <div className="space-y-6">
@@ -451,6 +929,31 @@ export default function RescuesPage() {
                 }`}
               >
                 {t(option)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <p className="text-xs uppercase tracking-[0.3em] text-ink-muted">
+            {t("filter_status")}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(["active", "resolved", "all"] as const).map((option) => (
+              <button
+                key={option}
+                onClick={() => setStatusFilter(option)}
+                className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
+                  statusFilter === option
+                    ? "bg-ink text-white shadow-pill"
+                    : "bg-white text-ink hover:-translate-y-0.5"
+                }`}
+              >
+                {option === "resolved"
+                  ? t("rescue_status_resolved")
+                  : option === "active"
+                  ? t("active")
+                  : t("all")}
               </button>
             ))}
           </div>
@@ -554,7 +1057,7 @@ export default function RescuesPage() {
           <p className="text-xs uppercase tracking-[0.3em] text-ink-muted">
             {t("cases")}
           </p>
-          <p className="mt-3 text-3xl font-semibold text-ink">{activeRescues.length}</p>
+          <p className="mt-3 text-3xl font-semibold text-ink">{visibleRescues.length}</p>
         </div>
         <div className="rounded-[24px] border border-red-100 bg-red-50/80 p-4 text-center shadow-card">
           <p className="text-xs uppercase tracking-[0.3em] text-red-400">{t("alerts")}</p>
@@ -579,9 +1082,16 @@ export default function RescuesPage() {
             <p className="text-sm text-ink-muted">{t("no_recent_alerts")}</p>
           ) : (
             recentRescues.map((rescue: any) => (
-              <div
+              <button
                 key={rescue.id}
-                className="rounded-2xl border border-slate-100/80 bg-white px-3 py-2 text-sm text-ink-muted"
+                type="button"
+                onClick={() => {
+                  setSelectedRescueId(rescue.id);
+                  setMapCenter([rescue.latitude, rescue.longitude]);
+                  setMapZoom(13);
+                  setMapKey((prev) => prev + 1);
+                }}
+                className="w-full rounded-2xl border border-slate-100/80 bg-white px-3 py-2 text-left text-sm text-ink-muted transition hover:-translate-y-0.5 hover:bg-slate-50"
               >
                 <p className="font-semibold text-ink">
                   {rescue.message || t("alert_logged")}
@@ -589,7 +1099,7 @@ export default function RescuesPage() {
                 <p className="text-xs text-ink-muted">
                   {rescue.latitude?.toFixed?.(3)}, {rescue.longitude?.toFixed?.(3)}
                 </p>
-              </div>
+              </button>
             ))
           )}
         </div>
@@ -608,6 +1118,309 @@ export default function RescuesPage() {
       </div>
     </div>
   );
+
+  const selectedRescuePanel = selectedRescue ? (
+    <div className="pointer-events-auto absolute left-4 right-4 top-24 z-[550] max-h-[70vh] overflow-y-auto rounded-[28px] border border-slate-100/80 bg-white/95 p-4 shadow-card backdrop-blur sm:left-auto sm:right-6 sm:top-28 sm:w-[360px]">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.3em] text-ink-muted">
+            {t("selected_rescue")}
+          </p>
+          <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 21s-7-4.35-7-11a7 7 0 1114 0c0 6.65-7 11-7 11z" />
+              <circle cx="12" cy="10" r="2.5" fill="currentColor" />
+            </svg>
+            #{selectedRescue.id}
+          </div>
+        </div>
+        <button
+          onClick={() => setSelectedRescueId(null)}
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-50 text-ink"
+        >
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div className="mt-4 space-y-2 text-sm text-ink-muted">
+        <p>
+          <span className="font-semibold text-ink">{t("status")}: </span>
+          {formatRescueStatus(selectedRescue.status)}
+        </p>
+        <p>
+          <span className="font-semibold text-ink">{t("location")}: </span>
+          {selectedRescue.latitude.toFixed(4)}, {selectedRescue.longitude.toFixed(4)}
+        </p>
+        <p>
+          <span className="font-semibold text-ink">{t("message")}: </span>
+          {selectedRescue.message || "—"}
+        </p>
+      </div>
+
+      {rescuerDistanceKm !== null && (
+        <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50/80 px-3 py-2 text-sm text-ink">
+          <p className="text-xs uppercase tracking-[0.3em] text-ink-muted">
+            {t("distance_to_rescuer")}
+          </p>
+          <p className="mt-1 text-lg font-semibold text-ink">
+            {rescuerDistanceKm.toFixed(1)} km
+          </p>
+        </div>
+      )}
+
+      {(selectedRescue.assignedRescuerId || selectedRescue.assignedTeamId) && (
+        <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-sm text-emerald-700">
+          <p className="text-xs uppercase tracking-[0.3em] text-emerald-600">
+            {t("assigned_rescuer")}
+          </p>
+          <p className="mt-1 font-semibold text-emerald-700">
+            {acceptedCandidate?.team?.name ||
+              acceptedCandidate?.user?.name ||
+              acceptedCandidate?.user?.email ||
+              (selectedRescue.assignedTeamId
+                ? `${t("assigned_team")} #${selectedRescue.assignedTeamId}`
+                : `${t("assigned_rescuer")} #${selectedRescue.assignedRescuerId}`)}
+          </p>
+        </div>
+      )}
+
+      {!selectedRescue.assignedRescuerId &&
+        !selectedRescue.assignedTeamId &&
+        !isOwner && (
+          <div className="mt-4 space-y-3">
+            {myCandidate ? (
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm text-ink">
+                <p className="font-semibold text-ink">{t("rescue_candidates")}</p>
+                <p className="mt-1 text-xs text-ink-muted">
+                  {t(`candidate_status_${myCandidate.status}`, {
+                    defaultValue: myCandidate.status,
+                  })}
+                </p>
+                {myCandidate.status === "pending" && (
+                  <p className="mt-2 text-xs text-ink-muted">
+                    {t("chat_pending_accept")}
+                  </p>
+                )}
+              </div>
+            ) : rescueOpenForCandidates ? (
+              <>
+                <button
+                  onClick={() => handleCandidate()}
+                  disabled={candidateSubmitting}
+                  className="flex w-full items-center justify-center gap-2 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white shadow-pill transition hover:-translate-y-0.5 disabled:opacity-60"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
+                  </svg>
+                  {candidateSubmitting ? t("processing") : t("candidate_as_rescuer")}
+                </button>
+
+                {teamOptions.length > 0 && (
+                  <div className="rounded-2xl border border-slate-100 bg-white px-3 py-2">
+                    <label className="text-xs uppercase tracking-[0.3em] text-ink-muted">
+                      {t("teams")}
+                    </label>
+                    <select
+                      value={teamCandidateId}
+                      onChange={(e) => setTeamCandidateId(e.target.value)}
+                      className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-ink"
+                    >
+                      <option value="">{t("select_option")}</option>
+                      {teamOptions.map((team) => (
+                        <option key={team.id} value={team.id}>
+                          {team.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => {
+                        if (!teamCandidateId) return;
+                        handleCandidate(Number(teamCandidateId));
+                      }}
+                      disabled={candidateSubmitting || !teamCandidateId}
+                      className="mt-3 w-full rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-pill transition hover:-translate-y-0.5 disabled:opacity-60"
+                    >
+                      {candidateSubmitting ? t("processing") : t("candidate_as_team")}
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm text-ink">
+                <p className="font-semibold text-ink">{t("rescue_unavailable")}</p>
+                <p className="mt-1 text-xs text-ink-muted">
+                  {selectedRescue.status === "resolved"
+                    ? t("rescue_resolved")
+                    : t("rescue_assigned")}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+      {isOwner && (
+        <div className="mt-5">
+          <p className="text-xs uppercase tracking-[0.3em] text-ink-muted">
+            {t("rescue_candidates")}
+          </p>
+          {candidateError && (
+            <p className="mt-2 text-xs text-rose-500">{candidateError}</p>
+          )}
+          {loadingCandidates ? (
+            <p className="mt-2 text-sm text-ink-muted">{t("loading")}</p>
+          ) : candidates.length === 0 ? (
+            <p className="mt-2 text-sm text-ink-muted">{t("no_candidates")}</p>
+          ) : (
+            <div className="mt-3 space-y-2">
+            {candidates.map((candidate) => (
+                <div
+                  key={candidate.id}
+                  className="rounded-2xl border border-slate-100 bg-white px-3 py-2 text-xs text-ink-muted"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-3">
+                        {candidate.user?.avatar ? (
+                          <img
+                            src={candidate.user.avatar}
+                            alt={candidate.user?.name || candidate.user?.email || "Avatar"}
+                            className="h-10 w-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-ink">
+                            {candidate.team ? (
+                              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11a4 4 0 118 0v1h2a2 2 0 012 2v4H2v-4a2 2 0 012-2h2v-1z" />
+                              </svg>
+                            ) : (
+                              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 12a4 4 0 100-8 4 4 0 000 8zm6 8a6 6 0 00-12 0" />
+                              </svg>
+                            )}
+                          </span>
+                        )}
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-ink">
+                            {candidate.team?.name ||
+                              candidate.user?.name ||
+                              candidate.user?.email ||
+                              `#${candidate.id}`}
+                          </p>
+                          <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-slate-50 px-2 py-1 text-[10px] font-semibold text-slate-500">
+                            <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            {t(`candidate_status_${candidate.status}`, {
+                              defaultValue: candidate.status,
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    {!selectedRescue.assignedRescuerId &&
+                      !selectedRescue.assignedTeamId &&
+                      candidate.status === "pending" && (
+                        <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">
+                          <button
+                            onClick={() => handleAssignCandidate(candidate.id)}
+                            disabled={assigningCandidateId === candidate.id}
+                            className="flex items-center justify-center gap-1 rounded-full bg-ink px-3 py-1 text-[11px] font-semibold text-white"
+                          >
+                            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            {assigningCandidateId === candidate.id
+                              ? t("processing")
+                              : t("accept_candidate")}
+                          </button>
+                          <button
+                            onClick={() => handleRejectCandidate(candidate.id)}
+                            disabled={assigningCandidateId === candidate.id}
+                            className="flex items-center justify-center gap-1 rounded-full bg-rose-600 px-3 py-1 text-[11px] font-semibold text-white"
+                          >
+                            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            {t("reject_candidate")}
+                          </button>
+                        </div>
+                      )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {canShareLocation && (
+        <button
+          onClick={() => setSharingLocation((prev) => !prev)}
+          className={`mt-5 w-full rounded-full px-4 py-2 text-sm font-semibold shadow-pill transition ${
+            sharingLocation
+              ? "bg-slate-900 text-white"
+              : "bg-white text-ink"
+          }`}
+        >
+          {sharingLocation ? t("stop_sharing") : t("share_location")}
+        </button>
+      )}
+
+      {canChat && (
+        <div className="mt-5 rounded-2xl border border-slate-100 bg-white p-3">
+          <p className="text-xs uppercase tracking-[0.3em] text-ink-muted">
+            {t("private_chat")}
+          </p>
+          <div className="mt-3 max-h-40 space-y-2 overflow-y-auto pr-1 text-xs">
+            {messagesLoading ? (
+              <p className="text-ink-muted">{t("loading")}</p>
+            ) : messages.length === 0 ? (
+              <p className="text-ink-muted">{t("no_messages")}</p>
+            ) : (
+              messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`w-fit max-w-[90%] rounded-2xl px-3 py-2 ${
+                    msg.author?.id === currentUserId
+                      ? "ml-auto bg-ink text-white"
+                      : "bg-slate-100 text-ink"
+                  }`}
+                >
+                  <p className="text-[11px] font-semibold">
+                    {msg.author?.name || msg.author?.email || "—"}
+                  </p>
+                  <p>{msg.content}</p>
+                </div>
+              ))
+            )}
+          </div>
+          <div className="mt-3 flex items-center gap-2">
+            <input
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+              placeholder={t("chat_placeholder")}
+              className="flex-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-ink focus:border-ink focus:outline-none"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+            />
+            <button
+              onClick={handleSendMessage}
+              disabled={sendingMessage || !messageText.trim()}
+              className="rounded-full bg-ink px-3 py-2 text-xs font-semibold text-white shadow-pill disabled:opacity-60"
+            >
+              {sendingMessage ? "..." : t("send_message")}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  ) : null;
 
   return (
     <div className="h-screen">
@@ -636,49 +1449,52 @@ export default function RescuesPage() {
                     pathOptions={{ color: "#ef4444", fillColor: "#fecaca", fillOpacity: 0.35 }}
                   />
                 )}
-                {activeRescues.map((r: any) => (
+                {visibleRescues.map((r: any) => (
                   <Marker
                     key={r.id}
                     position={[r.latitude, r.longitude]}
                     icon={icon}
+                    eventHandlers={{
+                      click: () => setSelectedRescueId(r.id),
+                    }}
                   >
-                    <Popup>
-                      {r.message || "—"}
-                      <br />
-                      {t("status")}: {formatRescueStatus(r.status)}
-                      {r.problemType && (
-                        <>
-                          <br />
-                          {t("problem_type")}: {t(`problem_${r.problemType}`)}
-                        </>
-                      )}
-                      {r.vehicleType && (
-                        <>
-                          <br />
-                          {t("vehicle_type")}: {t(`vehicle_${r.vehicleType}`)}
-                        </>
-                      )}
-                      {r.assistanceStatus && (
-                        <>
-                          <br />
-                          {t("assistance_status")}:{" "}
-                          {t(`assistance_status_${r.assistanceStatus}`)}
-                        </>
-                      )}
-                      {r.assistanceProvider && (
-                        <>
-                          <br />
-                          {t("assistance_provider")}: {r.assistanceProvider}
-                        </>
-                      )}
-                    </Popup>
                   </Marker>
                 ))}
+                {selectedRescue && (
+                  <Circle
+                    center={[selectedRescue.latitude, selectedRescue.longitude]}
+                    radius={140}
+                    pathOptions={{ color: "#f97316", fillColor: "#fed7aa", fillOpacity: 0.35 }}
+                  />
+                )}
+                {selectedRescue &&
+                  selectedRescue.rescuerLatitude != null &&
+                  selectedRescue.rescuerLongitude != null && (
+                    <>
+                      <Polyline
+                        positions={[
+                          [selectedRescue.rescuerLatitude, selectedRescue.rescuerLongitude],
+                          [selectedRescue.latitude, selectedRescue.longitude],
+                        ]}
+                        pathOptions={{ color: "#0ea5e9", weight: 3, dashArray: "6 6" }}
+                      />
+                      <CircleMarker
+                        center={[
+                          selectedRescue.rescuerLatitude,
+                          selectedRescue.rescuerLongitude,
+                        ]}
+                        radius={8}
+                        pathOptions={{ color: "#0ea5e9", fillColor: "#38bdf8", fillOpacity: 0.9 }}
+                      />
+                    </>
+                )}
               </MapContainer>
             )}
           </div>
 
-          <div className="pointer-events-none absolute left-0 right-0 top-20 z-[500] flex items-center gap-3 p-4 md:top-24">
+          {selectedRescuePanel}
+
+          <div className="pointer-events-none absolute left-0 right-0 top-6 z-[500] flex items-center gap-3 p-4">
             <button
               onClick={() => setPanelOpen(true)}
               className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-ink text-white shadow-pill lg:hidden"

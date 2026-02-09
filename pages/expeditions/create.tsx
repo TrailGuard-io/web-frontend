@@ -4,6 +4,7 @@ import { useTranslation } from "next-i18next";
 import { serverSideTranslations } from "next-i18next/serverSideTranslations";
 import { API_BASE_URL } from "../../lib/api";
 import { useUserStore } from "../../store/user";
+import { toast } from "react-toastify";
 
 interface FeatureFlags {
   expeditions: boolean;
@@ -87,22 +88,22 @@ export default function CreateExpeditionPage() {
 
   const handleSubmit = async () => {
     if (!formData.title.trim()) {
-      alert(t("expedition_title_required"));
+      toast.error(t("expedition_title_required"));
       return;
     }
 
     if (!formData.startDate) {
-      alert(t("start_date_required"));
+      toast.error(t("start_date_required"));
       return;
     }
 
     if (formData.maxParticipants < 2 || formData.maxParticipants > 100) {
-      alert(t("invalid_max_participants"));
+      toast.error(t("invalid_max_participants"));
       return;
     }
 
     if (formData.cost && Number(formData.cost) < 0) {
-      alert(t("invalid_cost"));
+      toast.error(t("invalid_cost"));
       return;
     }
 
@@ -138,14 +139,14 @@ export default function CreateExpeditionPage() {
 
       if (!response.ok) {
         const error = await response.json();
-        alert(error.error || t("error"));
+        toast.error(error.error || t("error"));
         return;
       }
 
-      alert(t("expedition_created_successfully"));
+      toast.success(t("expedition_created_successfully"));
       router.push("/expeditions");
     } catch {
-      alert(t("connection_error"));
+      toast.error(t("connection_error"));
     } finally {
       setIsSubmitting(false);
     }
