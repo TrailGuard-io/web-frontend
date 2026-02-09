@@ -1,4 +1,4 @@
-const CACHE_NAME = "trailguard-shell-v1";
+const CACHE_NAME = "trailguard-shell-v2";
 const CORE_ASSETS = [
   "/",
   "/manifest.webmanifest",
@@ -37,6 +37,23 @@ self.addEventListener("fetch", (event) => {
 
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) return;
+  if (requestUrl.pathname.startsWith("/_next/")) return;
+  if (requestUrl.pathname.startsWith("/api/")) return;
+
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
