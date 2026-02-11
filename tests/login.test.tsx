@@ -31,10 +31,8 @@ describe("LoginPage", () => {
 
     expect(screen.getByText("continue_with_google")).toBeInTheDocument();
     expect(screen.getByText("continue_with_facebook")).toBeInTheDocument();
-    expect(screen.getByText("continue_with_apple")).toBeInTheDocument();
 
     expect(screen.getByTestId("google-icon")).toBeInTheDocument();
     expect(screen.getByTestId("facebook-icon")).toBeInTheDocument();
-    expect(screen.getByTestId("apple-icon")).toBeInTheDocument();
   });
 });

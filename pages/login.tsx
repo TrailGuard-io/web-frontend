@@ -13,7 +13,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleSocialLogin = (provider: "google" | "facebook" | "apple") => {
+  const handleSocialLogin = (provider: "google" | "facebook") => {
     window.location.href = `${API_BASE_URL}/api/auth/${provider}`;
   };
 
@@ -154,25 +154,6 @@ export default function LoginPage() {
               />
             </svg>
             {t("continue_with_facebook")}
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSocialLogin("apple")}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-ink shadow-sm transition hover:-translate-y-0.5"
-          >
-            <svg
-              data-testid="apple-icon"
-              aria-hidden="true"
-              className="h-5 w-5"
-              viewBox="0 0 24 24"
-              fill="none"
-            >
-              <path
-                d="M16.7 12.9c0 3.31 2.9 4.41 2.93 4.42-.02.08-.46 1.58-1.51 3.12-.91 1.33-1.86 2.66-3.35 2.68-1.46.03-1.93-.86-3.6-.86-1.67 0-2.18.83-3.56.89-1.42.05-2.5-1.42-3.41-2.74-1.86-2.69-3.29-7.6-1.38-10.92.95-1.65 2.66-2.7 4.52-2.73 1.41-.03 2.74.95 3.6.95.86 0 2.48-1.18 4.18-1.01.71.03 2.7.29 3.99 2.19-.1.06-2.38 1.39-2.36 4.01ZM14.5 2.97c.76-.92 1.27-2.2 1.13-3.47-1.1.04-2.42.73-3.21 1.65-.7.81-1.32 2.1-1.15 3.33 1.23.1 2.47-.62 3.23-1.51Z"
-                fill="#111827"
-              />
-            </svg>
-            {t("continue_with_apple")}
           </button>
         </div>
 
