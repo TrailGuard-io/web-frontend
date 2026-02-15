@@ -26,22 +26,40 @@ export default function SubscriptionPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const token = useUserStore((state) => state.token);
+  const [authToken, setAuthToken] = useState<string | null | undefined>(undefined);
   const router = useRouter();
 
   useEffect(() => {
-    if (!token) {
-      const stored = localStorage.getItem("token");
-      if (!stored) {
-        router.push("/login");
-        return;
-      }
+    if (token) {
+      setAuthToken(token);
+      return;
+    }
+    if (typeof window !== "undefined") {
+      setAuthToken(localStorage.getItem("token"));
+      return;
+    }
+    setAuthToken(null);
+  }, [token]);
+
+  useEffect(() => {
+    if (authToken === undefined) {
+      return;
+    }
+    if (!authToken) {
+      router.push("/login");
+      return;
     }
 
     Promise.all([
       fetch(`${API_BASE_URL}/api/subscriptions/plans`).then(res => res.json()),
       fetch(`${API_BASE_URL}/api/subscriptions/current`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }).then(res => res.json())
+        headers: { Authorization: `Bearer ${authToken}` },
+      }).then(async (res) => {
+        if (!res.ok) {
+          throw new Error("subscription_error");
+        }
+        return res.json();
+      })
     ])
       .then(([plansData, currentData]) => {
         setPlans(plansData);
@@ -52,7 +70,7 @@ export default function SubscriptionPage() {
         alert(t("error_loading_subscription"));
         setIsLoading(false);
       });
-  }, [token]);
+  }, [authToken, router, t]);
 
   const handleSubscribe = async (planType: 'premium' | 'pro') => {
     const planName = plans[planType]?.name || t(`plan_${planType}`);
@@ -63,29 +81,34 @@ export default function SubscriptionPage() {
 
     try {
       setIsProcessing(true);
-      
-      // Mock payment ID - in a real app, you'd integrate with Stripe, PayPal, etc.
-      const mockPaymentId = `mock_payment_${Date.now()}`;
-      
+      if (!authToken) {
+        router.push("/login");
+        return;
+      }
+
       const response = await fetch(`${API_BASE_URL}/api/subscriptions`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${authToken}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           type: planType,
-          paymentId: mockPaymentId,
         }),
       });
 
-      if (response.ok) {
-        alert(t("subscription_success"));
-        window.location.reload();
-      } else {
-        const error = await response.json();
-        alert(error.error || t("subscription_process_error"));
+      const data = await response.json();
+      if (!response.ok) {
+        alert(data.error || t("subscription_process_error"));
+        return;
       }
+
+      if (data.initPoint) {
+        window.location.href = data.initPoint;
+        return;
+      }
+
+      alert(t("subscription_process_error"));
     } catch (error) {
       alert(t("connection_error"));
     } finally {
@@ -99,9 +122,13 @@ export default function SubscriptionPage() {
     }
 
     try {
+      if (!authToken) {
+        router.push("/login");
+        return;
+      }
       const response = await fetch(`${API_BASE_URL}/api/subscriptions/cancel`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
 
       if (response.ok) {
@@ -127,6 +154,8 @@ export default function SubscriptionPage() {
     );
   }
 
+  const currentPlanKey = currentSubscription?.currentPlan || "free";
+
   return (
     <div className="min-h-screen px-4 py-12">
       <div className="mx-auto w-full max-w-6xl">
@@ -145,7 +174,7 @@ export default function SubscriptionPage() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3 className="text-lg font-semibold text-ink">
-                    {t("current_plan")}: {t(`plan_${currentSubscription.currentPlan}`)}
+                    {t("current_plan")}: {t(`plan_${currentPlanKey}`)}
                   </h3>
                   {currentSubscription.expiresAt && (
                     <p className="mt-1 text-ink-muted">
@@ -153,7 +182,7 @@ export default function SubscriptionPage() {
                     </p>
                   )}
                 </div>
-                {currentSubscription.currentPlan !== 'free' && (
+                {currentPlanKey !== 'free' && (
                   <button
                     onClick={handleCancelSubscription}
                     className="rounded-full bg-danger px-4 py-2 text-sm font-semibold text-white shadow-pill transition hover:-translate-y-0.5"
@@ -218,7 +247,7 @@ export default function SubscriptionPage() {
                         <svg className="mr-2 h-5 w-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        {feature}
+                        {t(feature, { defaultValue: feature })}
                       </li>
                     ))}
                   </ul>
@@ -260,7 +289,7 @@ export default function SubscriptionPage() {
                         <svg className="mr-2 h-5 w-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        {feature}
+                        {t(feature, { defaultValue: feature })}
                       </li>
                     ))}
                   </ul>
